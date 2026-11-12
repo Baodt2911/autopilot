@@ -267,3 +267,101 @@ def test_export_events_rewind_reopens_threads_before_author_reply(tmp_git_repo, 
     assert rc == 0, text
     body = next(out.glob("579-*.md")).read_text()
     assert "first ask" in body and "later chat" not in body
+
+
+def _reply_setup(repo, proj, thread_comments=("PRRC_1",)):
+    from autopilot.models import Thread
+    from conftest import comment
+    cfg, store, opts = proj(repo)
+    th = Thread("PRRT_1", False, tuple(comment(c) for c in thread_comments))
+    store.save_snapshot(581, router.snapshot_to_dict(snap(threads=(th,))))
+    bid = store.create_batch(581, [], T0)
+    store.transition(bid, "delivered", T0, session="s")
+    return cfg, store, opts, bid
+
+
+def test_reply_thread_comment_and_pr_comment_post_and_log(tmp_git_repo, tmp_path, proj, capsys, monkeypatch):
+    cfg, store, opts, bid = _reply_setup(tmp_git_repo, proj)
+    gh = FakeGitHub()
+    monkeypatch.setattr(cli, "_github", lambda c: gh)
+    f = tmp_path / "r.md"
+    f.write_text("Fixed in abc123.")
+    assert run(capsys, ["reply", str(bid), "--thread", "PRRT_1", "--file", str(f), *opts])[0] == 0
+    assert run(capsys, ["reply", str(bid), "--comment", "55", "--file", str(f), *opts])[0] == 0
+    assert run(capsys, ["reply", str(bid), "--pr-comment", "--file", str(f), *opts])[0] == 0
+    assert gh.posted == [("thread", "PRRT_1", "Fixed in abc123."), ("comment", 581, 55, "Fixed in abc123."),
+                         (581, "Fixed in abc123.")]
+    assert sum(t["kind"] == "replied" for t in store.timeline(581)) == 3
+
+
+def test_reply_refusals(tmp_git_repo, tmp_path, proj, capsys, monkeypatch):
+    cfg, store, opts, bid = _reply_setup(tmp_git_repo, proj)
+    gh = FakeGitHub()
+    monkeypatch.setattr(cli, "_github", lambda c: gh)
+    f = tmp_path / "r.md"
+    f.write_text("text")
+    a = ["reply", str(bid), "--thread", "PRRT_1", "--file", str(f), *opts]
+    # C2 silence: open Q targeting the thread, or one of its comments, or a comment id
+    code = store.add_item("Q", 581, bid, "t", "b", T0, target="PRRC_1")
+    rc, out = run(capsys, a)
+    assert rc == 1 and "im lặng" in out
+    rc, out = run(capsys, ["reply", str(bid), "--comment", "7", "--file", str(f), *opts])
+    assert rc == 0  # different target is not silenced
+    store.resolve_item(code, "A", "", "", T0)
+    c2 = store.add_item("Q", 581, bid, "t", "b", T0, target="PRRT_1")
+    assert run(capsys, a)[0] == 1
+    store.resolve_item(c2, "A", "", "", T0)
+    assert gh.posted == [("comment", 581, 7, "text")]
+    # round cap
+    cfg2, store2, opts2, bid2 = _reply_setup(tmp_git_repo, proj)
+    for _ in range(4):
+        store2.bump_round("PRRT_1")
+    rc, out = run(capsys, ["reply", str(bid2), "--thread", "PRRT_1", "--file", str(f), *opts2])
+    assert rc == 1 and "vòng" in out
+    # terminal batch
+    store2.transition(bid2, "acked", T0)
+    store2.transition(bid2, "in_progress", T0)
+    store2.transition(bid2, "done", T0)
+    rc, out = run(capsys, ["reply", str(bid2), "--pr-comment", "--file", str(f), *opts2])
+    assert rc == 1 and "kết thúc" in out
+    # PR not open
+    store2.save_snapshot(581, router.snapshot_to_dict(snap(state="MERGED")))
+    bid3 = store2.create_batch(581, [], T0)
+    rc, out = run(capsys, ["reply", str(bid3), "--pr-comment", "--file", str(f), *opts2])
+    assert rc == 1 and "không còn mở" in out
+    assert len(gh.posted) == 1
+
+
+def test_item_target_and_plan_copy_and_backlog_file(tmp_git_repo, tmp_path, proj, capsys):
+    cfg, store, opts, bid = push_setup(tmp_git_repo, proj)
+    body = tmp_path / "p.md"
+    body.write_text("plan body")
+    rc, out = run(capsys, ["item", str(bid), "P", "--title", "t", "--file", str(body), "--target", "PRRT_9", *opts])
+    assert rc == 0
+    code = out.strip().splitlines()[-1]
+    assert store.item(code)["target"] == "PRRT_9"
+    assert (cfg.plans_dir / f"{code}.md").read_text() == "plan body"
+    body.unlink()  # scratch is disposable
+    assert (cfg.plans_dir / f"{code}.md").exists() and store.item(code)["body_md"] == "plan body"
+    gap = tmp_path / "g.md"
+    gap.write_text("spec says $(x) nothing")
+    assert run(capsys, ["backlog-add", "spec-gap", "581", "--file", str(gap), *opts])[0] == 0
+    assert "spec says $(x) nothing" in (cfg.data_dir / "backlog.md").read_text()
+    assert run(capsys, ["backlog-add", "spec-gap", "581", *opts])[0] == 1
+
+
+def test_export_flags_need_export_events_and_file_has_no_commands(tmp_git_repo, tmp_path, monkeypatch, capsys):
+    from conftest import comment
+    cd = tmp_path / "cfg"
+    cd.mkdir()
+    (cd / "t.toml").write_text(f'repo = "{tmp_git_repo}"\nauthor = "me"\ngh_user = "me"\n')
+    assert run(capsys, ["scan", "--rewind"])[0] == 2
+    assert run(capsys, ["scan", "--out", "x"])[0] == 2
+    gh = FakeGitHub()
+    gh.closed = [snap(579, state="MERGED", comments=(comment("c9", "q?", author="rev"),))]
+    monkeypatch.setattr(cli, "_github", lambda c: gh)
+    out = tmp_path / "o"
+    assert run(capsys, ["scan", "--dry-run", "--export-events", "--pr", "579", "--out", str(out),
+                        "--config-dir", str(cd), "--project", "t"])[0] == 0
+    body = next(out.glob("579-*.md")).read_text()
+    assert "Lệnh phải chạy" not in body and "autopilot push" not in body and "q?" in body

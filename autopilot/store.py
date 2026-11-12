@@ -37,7 +37,8 @@ CREATE TABLE IF NOT EXISTS batches(
 CREATE TABLE IF NOT EXISTS items(
   seq INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT UNIQUE NOT NULL, kind TEXT NOT NULL,
   pr INTEGER, batch_id INTEGER, title TEXT, body_md TEXT, status TEXT NOT NULL DEFAULT 'open',
-  answer TEXT, note TEXT, reply_hint TEXT, created_at TEXT NOT NULL, resolved_at TEXT, reminded_at TEXT);
+  answer TEXT, note TEXT, reply_hint TEXT, created_at TEXT NOT NULL, resolved_at TEXT, reminded_at TEXT,
+  target TEXT NOT NULL DEFAULT '');
 CREATE TABLE IF NOT EXISTS counters(name TEXT PRIMARY KEY, value INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS kv(key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS locks(name TEXT PRIMARY KEY, holder TEXT NOT NULL, expires_at TEXT NOT NULL);
@@ -77,6 +78,8 @@ class Store:
         self._db.execute("PRAGMA journal_mode=WAL")
         self._db.execute("PRAGMA synchronous=NORMAL")
         self._db.executescript(SCHEMA)
+        if not any(r[1] == "target" for r in self._db.execute("PRAGMA table_info(items)")):
+            self._db.execute("ALTER TABLE items ADD COLUMN target TEXT NOT NULL DEFAULT ''")
 
     def _tx(self, fn):
         """Run fn(db) inside BEGIN IMMEDIATE so concurrent writers serialize on busy_timeout."""
@@ -197,14 +200,15 @@ class Store:
             d[c] = _dt(d[c])
         return d
 
-    def add_item(self, kind: str, pr: int, batch_id: int, title: str, body_md: str, now: datetime) -> str:
+    def add_item(self, kind: str, pr: int, batch_id: int, title: str, body_md: str, now: datetime,
+                 target: str = "") -> str:
         if kind not in ITEM_KINDS:
             raise ValueError(f"invalid item kind: {kind}")
 
         def f(db):
             cur = db.execute(
-                "INSERT INTO items(code,kind,pr,batch_id,title,body_md,created_at) VALUES('',?,?,?,?,?,?)",
-                (kind, pr, batch_id, title, body_md, now.isoformat()),
+                "INSERT INTO items(code,kind,pr,batch_id,title,body_md,created_at,target) VALUES('',?,?,?,?,?,?,?)",
+                (kind, pr, batch_id, title, body_md, now.isoformat(), target),
             )
             code = f"{kind}-{self.prefix}-{cur.lastrowid}"
             db.execute("UPDATE items SET code=? WHERE seq=?", (code, cur.lastrowid))
@@ -287,6 +291,10 @@ class Store:
 
     def bump_round(self, thread_id: str) -> int:
         return self._bump(f"round:{thread_id}")
+
+    def round_count(self, thread_id: str) -> int:
+        r = self._db.execute("SELECT value FROM counters WHERE name=?", (f"round:{thread_id}",)).fetchone()
+        return r[0] if r else 0
 
     def bump_wake(self, pr: int, day: date) -> int:
         return self._bump(f"wake:{pr}:{day.isoformat()}")

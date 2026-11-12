@@ -161,6 +161,26 @@ def test_post_comment_returns_url_and_body_is_single_arg():
     assert GitHub(cfg(), f).post_issue_comment(7, "b").endswith("#issuecomment-9")
 
 
+def test_reply_to_comment_and_thread_use_pinned_token_and_single_arg_body():
+    class R(Fake):
+        def __call__(self, args, env):
+            if args[:3] == ["gh", "api", "repos/example/repo/pulls/7/comments/55/replies"]:
+                self.calls.append((args, env))
+                return json.dumps({"html_url": "https://github.com/example/repo/pull/7#discussion_r56"})
+            if any(a.startswith("query=mutation") for a in args):
+                self.calls.append((args, env))
+                return json.dumps({"data": {"addPullRequestReviewThreadReply": {"comment": {"url": "https://x/c"}}}})
+            return super().__call__(args, env)
+    f = R()
+    body = "x; $(id) `id`"
+    gh = GitHub(cfg(), f)
+    assert gh.reply_to_comment(7, 55, body).endswith("discussion_r56")
+    assert gh.reply_to_thread("PRRT_1", body) == "https://x/c"
+    api = [c for c in f.calls if c[0][:2] == ["gh", "api"]]
+    assert all(env["GH_TOKEN"] == "tok-fake" for _, env in api) and len(api) == 2
+    assert f"body={body}" in api[0][0] and f"b={body}" in api[1][0]
+
+
 def _node_budget(query: str) -> int:
     """Sum over connections of the product of nested first/last values (GitHub's estimate)."""
     stack, total, pos = [], 0, 0

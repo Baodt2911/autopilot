@@ -242,6 +242,24 @@ class GitHub:
         n = self._graphql(PR_BY_NUMBER_QUERY, owner=owner, name=name, number=number)["repository"]["pullRequest"]
         return self._snapshot(n) if n else None
 
+    def reply_to_comment(self, pr: int, comment_id: int, body: str) -> str:
+        """Reply inside a review thread by the database id of one of its comments."""
+        out = self._run(["gh", "api", f"repos/{self.slug()}/pulls/{pr}/comments/{comment_id}/replies",
+                         "-X", "POST", "-f", f"body={body}"], self._env())
+        try:
+            return json.loads(out)["html_url"]
+        except (json.JSONDecodeError, KeyError) as e:
+            raise CmdError(f"unexpected reply response: {e}") from e
+
+    def reply_to_thread(self, thread_id: str, body: str) -> str:
+        q = ("mutation($t: ID!, $b: String!) { addPullRequestReviewThreadReply(input: "
+             "{pullRequestReviewThreadId: $t, body: $b}) { comment { url } } }")
+        d = self._graphql(q, t=thread_id, b=body)
+        try:
+            return d["addPullRequestReviewThreadReply"]["comment"]["url"]
+        except (KeyError, TypeError) as e:
+            raise CmdError(f"unexpected reply response: {e}") from e
+
     def post_comment(self, pr: int, body: str) -> str:
         return self._rest_post_comment(pr, body)
 

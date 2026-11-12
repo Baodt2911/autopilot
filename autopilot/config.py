@@ -20,6 +20,9 @@ DEFAULT_FORBIDDEN = (
     "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp",
 )
 
+_EXTRA_GIT = ("fetch", "merge", "show", "grep", "log", "rev-parse", "branch", "restore", "ls-files")
+_EXTRA_DENY = ("git rebase", "git reset --hard", "git push --force", "gh")
+
 _DICT_DEFAULTS: dict[str, dict] = {
     "limits": {"thread_rounds": 3, "wakes_per_pr_day": 5},
     "notify": {"hours": "07:00-22:00", "remind_after_h": 4, "digest_at": "08:00"},
@@ -35,9 +38,11 @@ _DICT_DEFAULTS: dict[str, dict] = {
             "Bash(git diff:*)", "Bash(echo:*)", "Bash(autopilot:*)",
             "Bash(rtk git add:*)", "Bash(rtk git commit:*)", "Bash(rtk git status:*)",
             "Bash(rtk git diff:*)", "Bash(rtk echo:*)", "Bash(rtk autopilot:*)",
+            *(f"Bash({p}git {c}:*)" for c in _EXTRA_GIT for p in ("", "rtk ")),
         ],
         "disallowed_tools": [
             "Bash(git push:*)", "Bash(rtk git push:*)", "Bash(rm:*)", "Bash(rtk rm:*)",
+            *(f"Bash({p}{c}:*)" for c in _EXTRA_DENY for p in ("", "rtk ")),
         ],
     },
 }

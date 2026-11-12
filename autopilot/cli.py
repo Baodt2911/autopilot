@@ -166,9 +166,9 @@ def _export_events(args) -> int:
     now = _now()
     if args.rewind:
         snap = _rewind(snap, cfg.author)
-    events = detect.detect(None, snap, cfg, now)
     if snap.state != "OPEN":  # detect() yields nothing for closed PRs; export their comments anyway
-        events = detect.detect(None, _as_open(snap), cfg, now)
+        snap = _as_open(snap)
+    events = detect.detect(None, snap, cfg, now)
     meta: dict = {"force_c2_threads": [], "pushback": {}, "force_c2": []}
     for e in events:
         tid, pb = e.payload.get("thread_id"), int(e.payload.get("pushback") or 0)
@@ -181,6 +181,9 @@ def _export_events(args) -> int:
     out = Path(args.out)
     proxy = types.SimpleNamespace(name=cfg.name, events_dir=out)  # event_file only reads these two
     path = event_file(proxy, {"id": "eval"}, events, snap, meta)
+    from .render import atomic_write
+    text = path.read_text(encoding="utf-8")
+    atomic_write(path, text.split("\n## Lệnh phải chạy")[0].rstrip("\n") + "\n")  # eval mode runs no commands
     print(f"[export] {len(events)} sự kiện -> {path}")
     return 0
 
@@ -214,6 +217,9 @@ def _rewind(snap, author: str):
 
 
 def cmd_scan(args) -> int:
+    if (args.rewind or args.out) and not args.export_events:
+        print("--rewind và --out chỉ dùng với --export-events.", file=sys.stderr)
+        return 2
     if args.export_events:
         if not (args.dry_run and args.pr is not None and args.out) or args.claim:
             print("--export-events cần --dry-run, --pr N và --out DIR (không dùng với --claim).", file=sys.stderr)
@@ -424,10 +430,13 @@ def cmd_start(args) -> int:
 
 
 def cmd_item(args) -> int:
-    _, store = _ctx(args)
+    cfg, store = _ctx(args)
     b = _batch(store, args.batch)
     body = Path(args.file).read_text(encoding="utf-8")
-    code = store.add_item(args.kind, b["pr"], args.batch, args.title, body, _now())
+    code = store.add_item(args.kind, b["pr"], args.batch, args.title, body, _now(), target=args.target or "")
+    if args.kind == "P":  # the CLI keeps its own copy of the plan; the worker's scratch file is disposable
+        from .render import atomic_write
+        atomic_write(cfg.plans_dir / f"{code}.md", body)
     print(code)
     return 0
 
@@ -449,11 +458,54 @@ def cmd_result(args) -> int:
 
 def cmd_backlog_add(args) -> int:
     cfg, _ = _ctx(args)
+    text = " ".join(args.text)
+    if args.file:
+        text = Path(args.file).read_text(encoding="utf-8")
+    if not text.strip():
+        return _err("Thiếu nội dung backlog (đối số text hoặc --file).")
     try:
-        answers.add_backlog(cfg, args.kind, args.pr, " ".join(args.text), _now())
+        answers.add_backlog(cfg, args.kind, args.pr, text, _now())
     except ValueError as e:
         return _err(str(e))
     print("Đã thêm vào backlog.")
+    return 0
+
+
+def cmd_reply(args) -> int:
+    cfg, store = _ctx(args)
+    b = _batch(store, args.batch)
+    pr = b["pr"]
+    snap = store.snapshot(pr)
+    if b["status"] in ("done", "escalated", "cancelled"):
+        return _err(f"Lô {args.batch} đã kết thúc ({b['status']}): không reply.")
+    if not snap or snap.get("state") != "OPEN":
+        return _err(f"PR #{pr} không còn mở (hoặc chưa có snapshot): không reply.")
+    target = args.thread or (str(args.comment) if args.comment is not None else "")
+    ids = {target}
+    if args.thread:
+        for t in snap.get("threads", []):
+            if t["id"] == args.thread:
+                ids |= {c["id"] for c in t.get("comments", [])}
+    if target:
+        silenced = [i["code"] for i in store.open_items()
+                    if i["pr"] == pr and i["kind"] == "Q" and i.get("target") and i["target"] in ids]
+        if silenced:
+            return _err(f"Thread đang chờ owner ({', '.join(silenced)}): im lặng, không reply (G7).")
+    if args.thread and store.round_count(args.thread) > cfg.limits["thread_rounds"]:
+        return _err(f"Thread đã quá {cfg.limits['thread_rounds']} vòng reply (G9): không reply, hãy xếp C2.")
+    body = Path(args.file).read_text(encoding="utf-8")
+    if not body.strip():
+        return _err("Nội dung reply rỗng.")
+    gh = _github(cfg)
+    if args.thread:
+        url = gh.reply_to_thread(args.thread, body)
+    elif args.comment is not None:
+        url = gh.reply_to_comment(pr, args.comment, body)
+    else:
+        url = gh.post_issue_comment(pr, body)
+        target = "pr-comment"
+    store.log(pr, "replied", f"replied {target} {url}", _now(), url)
+    print(f"Đã reply: {url}")
     return 0
 
 
@@ -585,6 +637,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("kind", choices=["Q", "P", "R"])
     sp.add_argument("--title", required=True)
     sp.add_argument("--file", required=True)
+    sp.add_argument("--target", default="", help="id thread/comment mà mục này đang chặn (C2: im lặng trên đó)")
     sp = add("result", cmd_result)
     sp.add_argument("batch", type=int)
     sp.add_argument("--file", required=True)
@@ -592,7 +645,15 @@ def build_parser() -> argparse.ArgumentParser:
     sp = add("backlog-add", cmd_backlog_add)
     sp.add_argument("kind")
     sp.add_argument("pr", type=int)
-    sp.add_argument("text", nargs="+")
+    sp.add_argument("text", nargs="*")
+    sp.add_argument("--file")
+    sp = add("reply", cmd_reply)
+    sp.add_argument("batch", type=int)
+    g = sp.add_mutually_exclusive_group(required=True)
+    g.add_argument("--thread")
+    g.add_argument("--comment", type=int)
+    g.add_argument("--pr-comment", action="store_true")
+    sp.add_argument("--file", required=True)
     sp = add("lock", cmd_lock)
     sp.add_argument("action", choices=["acquire", "release"])
     sp.add_argument("name", choices=["testdb"])

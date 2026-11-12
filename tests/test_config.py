@@ -46,8 +46,11 @@ def test_worker_defaults_and_toml_merge(tmp_path):
     assert w["permission_mode"] == "acceptEdits"
     assert "Bash(rtk git add:*)" in w["allowed_tools"]
     assert not any("pnpm" in t for t in w["allowed_tools"])
-    assert w["disallowed_tools"] == [
-        "Bash(git push:*)", "Bash(rtk git push:*)", "Bash(rm:*)", "Bash(rtk rm:*)"]
+    for c in ("fetch", "merge", "show", "grep", "log", "rev-parse", "branch", "restore", "ls-files"):
+        assert f"Bash(git {c}:*)" in w["allowed_tools"] and f"Bash(rtk git {c}:*)" in w["allowed_tools"]
+    for c in ("git push", "rm", "git rebase", "git reset --hard", "git push --force", "gh"):
+        assert f"Bash({c}:*)" in w["disallowed_tools"] and f"Bash(rtk {c}:*)" in w["disallowed_tools"]
+    assert not any(t.startswith("Bash(gh") for t in w["allowed_tools"])
     write(tmp_path / "ivt.toml",
           'repo="/r"\nauthor="a"\ngh_user="a"\n[worker]\n'
           'claude_bin="/x/claude"\nallowed_tools=["Read","Bash(rtk pnpm test:*)"]\n')

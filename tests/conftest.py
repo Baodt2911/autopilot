@@ -44,6 +44,14 @@ class FakeGitHub:
     def pr_by_number(self, number):
         return next((s for s in [*self.open, *self.closed] if s.number == number), None)
 
+    def reply_to_thread(self, thread_id, body):
+        self.posted.append(("thread", thread_id, body))
+        return f"https://gh/thread/{thread_id}#r"
+
+    def reply_to_comment(self, pr, comment_id, body):
+        self.posted.append(("comment", pr, comment_id, body))
+        return f"https://gh/pull/{pr}#r{comment_id}"
+
     def post_issue_comment(self, issue, body):
         self.posted.append((issue, body))
         return f"https://gh/issues/{issue}#c"
