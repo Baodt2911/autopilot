@@ -37,7 +37,7 @@ Run: `claude -p "/pr-triage --eval <file> --rev <sha>" --model claude-sonnet-5-5
 
 | Metric | Target | Result |
 |---|---|---|
-| C2 classified as C1 | 0 | 0 (4 expected C2 items: 3 matched C2; 0 as C1) |
+| C2 classified as C1 | 0 | 0 (4 expected C2 items, all 4 classed C2) |
 | Unnecessary owner questions | <= 20% | 1 of 7 asked = 14% (item 3/3 of the multi-request review) |
 | A items touching more than 3 files | 0 | 0 claimed. Caveat: 579 item 1/3 is a true 4-file fix, claimed as 3. |
 
