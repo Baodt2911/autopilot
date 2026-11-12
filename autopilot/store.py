@@ -11,9 +11,9 @@ from autopilot.models import Event
 TRANSITIONS: dict[str, frozenset[str]] = {
     "new": frozenset({"delivered", "queued", "cancelled"}),
     "queued": frozenset({"delivered", "cancelled"}),
-    "delivered": frozenset({"acked", "delivered", "escalated", "cancelled"}),
-    "acked": frozenset({"in_progress", "cancelled"}),
-    "in_progress": frozenset({"done", "waiting_owner", "waiting_limit", "delivered", "cancelled"}),
+    "delivered": frozenset({"acked", "delivered", "escalated", "waiting_limit", "cancelled"}),
+    "acked": frozenset({"in_progress", "delivered", "escalated", "waiting_limit", "cancelled"}),
+    "in_progress": frozenset({"done", "waiting_owner", "waiting_limit", "delivered", "escalated", "cancelled"}),
     "waiting_owner": frozenset({"in_progress", "delivered", "cancelled"}),
     "waiting_limit": frozenset({"delivered", "cancelled"}),
     "escalated": frozenset({"delivered", "cancelled"}),
