@@ -5,6 +5,8 @@ const $ = (id) => document.getElementById(id);
 const STATE_VI = { none: "chưa có session", idle: "rảnh", working: "đang chạy", waiting: "chờ bạn",
   dead: "lỗi", limited: "hết limit", owner_busy: "bạn đang mở" };
 const STATE_TONE = { none: "muted", idle: "ok", working: "info", waiting: "warn", dead: "bad", limited: "bad", owner_busy: "warn" };
+const KIND_VI = { comment: "bình luận", review: "review", delivered: "đã giao", escalated: "cần xử lý", noop: "bỏ qua",
+  push: "đã push", pushed: "đã push", incident: "sự cố", answer: "trả lời", replied: "đã reply", cancelled: "đã hủy" };
 const BATCH_VI = { new: "mới", delivered: "đã giao", acked: "đã nhận", in_progress: "đang làm",
   done: "xong", escalated: "đã báo owner", cancelled: "đã hủy" };
 const SETTINGS = [
@@ -19,7 +21,7 @@ const SETTINGS = [
 ];
 
 const state = { project: null, prs: [], overview: null, tlPr: "", backlogKind: "spec-gap", backlog: [],
-  busy: false, timer: null, settingsLoaded: false };
+  busy: false, pending: false, timer: null, settingsLoaded: false };
 
 function h(tag, props, ...kids) {
   const el = document.createElement(tag);
@@ -220,7 +222,8 @@ function renderWorkers(ws) {
   for (const w of ws) {
     const lr = w.last_run, sess = w.session;
     const row = (k, v) => h("div", { class: "row" }, h("span", { text: k }), h("span", { text: v }));
-    const cmd = sess ? `cd ${w.path} && claude --resume ${sess}` : null;
+    const shq = (x) => `'${String(x).replace(/'/g, "'\\''")}'`;
+    const cmd = sess ? `cd ${shq(w.path)} && claude --resume ${shq(sess)}` : null;
     const copy = h("button", { class: "btn small", type: "button", text: "Copy lệnh", title: cmd ? "Copy lệnh mở lại session" : "Chưa có session", "aria-label": `Copy lệnh resume cho ${w.branch}` });
     if (cmd) copy.onclick = () => copyText(cmd, "lệnh resume"); else copy.disabled = true;
     box.append(h("article", { class: "card worker" },
@@ -243,7 +246,7 @@ function renderTimeline(items) {
   for (const t of items) {
     const url = safeUrl(t.url) || safeUrl(prUrl.get(t.pr));
     ol.append(h("li", {}, h("time", { datetime: t.at, text: fmtDateTime(t.at) }),
-      h("div", { class: "tl-text" }, badge(t.kind, t.kind === "noop" ? "muted" : t.kind === "incident" || t.kind === "escalated" ? "bad" : "info"), " ",
+      h("div", { class: "tl-text" }, badge(KIND_VI[t.kind] || t.kind, t.kind === "noop" ? "muted" : t.kind === "incident" || t.kind === "escalated" ? "bad" : "info"), " ",
         t.pr ? (url ? h("a", { href: url, target: "_blank", rel: "noopener noreferrer", text: `#${t.pr}` }) : `#${t.pr}`) : "", " ", t.text)));
   }
   $("timeline-empty").hidden = items.length > 0;
@@ -256,8 +259,12 @@ function digestBlock(el, title, items) {
 }
 function renderDigest(d) {
   $("digest-summary").textContent = d.summary;
-  const now = new Date(), cut = new Date(now); cut.setHours(8, 0, 0, 0);
-  const start = new Date(cut); start.setDate(start.getDate() - 1); start.setHours(18, 0, 0, 0);
+  const hm = (v, dflt) => { const m = /^(\d{1,2}):(\d{2})$/.exec(String(v || "").trim()); return m ? [+m[1], +m[2]] : dflt; };
+  const set = state.settings || {};
+  const digestAt = hm(set["notify.digest_at"], [8, 0]);
+  const quietFrom = hm(String(set["notify.hours"] || "").split("-")[1], [22, 0]); // night starts when notify hours end
+  const cut = new Date(); cut.setHours(digestAt[0], digestAt[1], 0, 0);
+  const start = new Date(cut); start.setDate(start.getDate() - 1); start.setHours(quietFrom[0], quietFrom[1], 0, 0);
   const at = (t) => new Date(t.at);
   digestBlock($("digest-night"), "Đêm qua", d.recent.filter((t) => at(t) >= start && at(t) < cut));
   digestBlock($("digest-today"), "Hôm nay", d.recent.filter((t) => at(t) >= cut));
@@ -277,6 +284,7 @@ function renderBacklog(data) {
 
 // ---- settings ----------------------------------------------------------------------
 function renderSettings(vals) {
+  state.settings = vals;
   const form = $("settings");
   if (!state.settingsLoaded) {
     state.settingsLoaded = true;
@@ -302,12 +310,14 @@ function renderSettings(vals) {
 
 // ---- refresh loop ------------------------------------------------------------------
 async function refresh() {
-  if (state.busy) return;
+  if (state.busy) { state.pending = true; return; }
   state.busy = true;
+  const project = state.project;
   try {
     const tl = state.tlPr ? `/api/timeline?pr=${encodeURIComponent(state.tlPr)}` : "/api/timeline";
     const [ov, items, prs, ws, tls, dg, bl, st] = await Promise.all(
       ["/api/overview", "/api/items", "/api/prs", "/api/workers", tl, "/api/digest", "/api/backlog", "/api/settings"].map((p) => api(p).catch((e) => e)));
+    if (project !== state.project) { state.pending = true; return; } // stale response for another project
     const auth = [ov, items, prs].find((r) => r instanceof ApiErr && r.status === 401);
     if (auth) { setBanner("Phiên hết hạn hoặc thiếu token. Mở lại dashboard bằng link in ra từ `autopilot web`."); return; }
     const down = [ov, items, prs].find((r) => r instanceof ApiErr);
@@ -318,11 +328,14 @@ async function refresh() {
     if (!(ws instanceof Error)) renderWorkers(ws);
     else { clear($("workers")); $("workers-empty").hidden = false; $("workers-empty").textContent = ws.message; }
     if (!(tls instanceof Error)) renderTimeline(tls);
+    if (!(st instanceof Error)) renderSettings(st);
     if (!(dg instanceof Error)) renderDigest(dg);
     if (!(bl instanceof Error)) renderBacklog(bl);
-    if (!(st instanceof Error)) renderSettings(st);
     $("updated").textContent = `Cập nhật lúc ${new Date().toLocaleTimeString("vi-VN")}`;
-  } finally { state.busy = false; }
+  } finally {
+    state.busy = false;
+    if (state.pending) { state.pending = false; refresh(); }
+  }
 }
 function schedule() {
   clearTimeout(state.timer);
