@@ -260,7 +260,7 @@ class HeadlessTransport:
         for e in entries:
             try:
                 argv = (e / "cmdline").read_bytes().decode(errors="replace").split("\0")
-                if os.path.basename(argv[0]) not in names or "--input-format" in argv and "stream-json" in argv:
+                if os.path.basename(argv[0]) not in names or ("--input-format" in argv and "stream-json" in argv):
                     continue
                 cwd = os.path.realpath(os.readlink(e / "cwd"))
             except OSError:

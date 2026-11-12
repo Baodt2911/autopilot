@@ -297,3 +297,11 @@ def test_foreign_claude_without_stored_session_is_owner_busy(fx):
     (d / "cmdline").unlink()
     d.rmdir()
     assert fx.t.status(fx.wt).state == "none"
+
+
+def test_stream_json_observer_without_session_is_not_owner_busy(fx):
+    d = fx.proc / "61"
+    d.mkdir()
+    (d / "cmdline").write_bytes(b"/usr/bin/claude\0--input-format\0stream-json\0")
+    os.symlink(fx.wt.path + "/sub", d / "cwd")
+    assert fx.t.status(fx.wt).state == "none"

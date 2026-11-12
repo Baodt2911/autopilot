@@ -52,12 +52,15 @@ systemctl --user start autopilot.timer
 
 ## 3. Xem log
 
+Lưu ý: `pause` áp dụng theo từng dự án; dự án mới thêm vào bắt đầu ở trạng thái KHÔNG tạm dừng (nhớ `autopilot pause --project <tên>` trước khi timer quét lần đầu).
+
 ```bash
 systemctl --user list-timers | grep autopilot
 journalctl --user -u autopilot.service -n 50 --no-pager
 journalctl --user -u autopilot.service --since "1 hour ago"
 journalctl --user -u autopilot-web.service -n 50 --no-pager
-tail -n 50 ~/Projects/MHT/iviettien/.autopilot/router.log
+autopilot status --project ivt
+cat ~/Projects/MHT/iviettien/.autopilot/STATE.md
 autopilot scan --dry-run --project ivt   # xem "sẽ giao gì cho ai" mà không ghi gì
 ```
 
