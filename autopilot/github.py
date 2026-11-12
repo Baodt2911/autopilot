@@ -117,7 +117,10 @@ def _review(n: dict) -> Review:
 
 
 def _parse_slug(url: str) -> str:
-    m = re.search(r"github\.com[:/]+([^/\s]+)/([^/\s]+?)(?:\.git)?/?\s*$", url.strip())
+    u = url.strip()
+    m = (re.search(r"github\.com[:/]+([^/\s]+)/([^/\s]+?)(?:\.git)?/?$", u)
+         # scp-style SSH with a host alias from ~/.ssh/config, e.g. git@github-personal:owner/repo.git
+         or re.fullmatch(r"[\w.-]+@[\w.-]+:([^/\s]+)/([^/\s]+?)(?:\.git)?/?", u))
     if not m:
         raise CmdError(f"cannot derive owner/repo from remote url: {url!r}")
     return f"{m.group(1)}/{m.group(2)}"

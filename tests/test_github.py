@@ -209,3 +209,10 @@ def test_query_node_budget_under_limit():
         assert _node_budget(q) < 500_000
     # sanity: the estimator sees nesting (search 10 x threads 25 x comments 20 = 5000 alone)
     assert _node_budget(gh_mod.OPEN_PRS_QUERY) >= 10 * 25 * 20
+
+
+def test_parse_slug_accepts_ssh_host_alias():
+    from autopilot.github import _parse_slug
+    assert _parse_slug("git@github-personal:Baodt2911/autopilot.git\n") == "Baodt2911/autopilot"
+    assert _parse_slug("git@github.com:org/repo.git") == "org/repo"
+    assert _parse_slug("https://github.com/org/repo") == "org/repo"
