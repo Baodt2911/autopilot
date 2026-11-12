@@ -71,8 +71,8 @@ Lookup order BEFORE choosing C2 (stop at the first hit): `decisions.md` -> `spec
 
 1. Immediately send owner items, before any code work. Write the body to a file in `.autopilot/scratch/`, then:
    - C2: `autopilot item <batch> Q --title "<short Vietnamese title>" --file <body.md> --target <target>` (`--target` is what silences the thread; always pass it. Canonical form: the thread node id `PRRT_...` from the event file for review-thread comments, `pr:<n>` for top-level PR comments and review bodies. A comment id is resolved to its thread by the CLI.) Titles are short labels such as `Q <path>:<line>`; never paste comment text into argv
-   - plan B: `autopilot item <batch> P --title "..." --file <plan.md> [--target <id>]` (put a <= 10 line summary first, then the plan)
-   - D-bug draft: `autopilot item <batch> R --title "..." --file <draft.md>` (English reply text + evidence)
+   - plan B: `autopilot item <batch> P --title "..." --file <plan.md> [--target <id>]` (put a <= 10 line summary first, then the plan; the title is a short label such as `P <path>`, never comment text)
+   - D-bug draft: `autopilot item <batch> R --title "..." --file <draft.md>` (English reply text + evidence; the title is a short label such as `R <path>:<line>`, never comment text)
    Each prints a code (Q-<proj>-<n>); remember it for the result.
    Q body format (Vietnamese labels, quote the reviewer verbatim):
    ```

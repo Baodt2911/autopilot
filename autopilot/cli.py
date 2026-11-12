@@ -431,25 +431,25 @@ def cmd_start(args) -> int:
     return 0
 
 
-def _canon_target(snap: dict | None, raw: str) -> str:
+def _canon_target(snap: dict | None, raw: str, pr: int) -> str:
     """Canonical C2 target: thread node id (PRRT_...) for review-thread comments, `pr:<n>` for the rest."""
     raw = (raw or "").strip()
-    if not raw or not snap:
+    if not raw or raw.startswith("PRRT_") or raw.startswith("pr:"):
         return raw
-    for t in snap.get("threads", []):
+    for t in (snap or {}).get("threads", []):
         if raw == t["id"]:
             return raw
         for c in t.get("comments", []):
             if raw == c["id"] or (raw.isdigit() and re.search(rf"discussion_r{raw}$", c.get("url") or "")):
                 return t["id"]
-    return raw
+    return f"pr:{pr}"  # not in any review thread: a top-level comment or review body
 
 
 def cmd_item(args) -> int:
     cfg, store = _ctx(args)
     b = _batch(store, args.batch)
     body = Path(args.file).read_text(encoding="utf-8")
-    code = store.add_item(args.kind, b["pr"], args.batch, args.title, body, _now(), target=_canon_target(store.snapshot(b["pr"]), args.target or ""))
+    code = store.add_item(args.kind, b["pr"], args.batch, args.title, body, _now(), target=_canon_target(store.snapshot(b["pr"]), args.target or "", b["pr"]))
     if args.kind == "P":  # the CLI keeps its own copy of the plan; the worker's scratch file is disposable
         from .render import atomic_write
         atomic_write(cfg.plans_dir / f"{code}.md", body)
@@ -499,7 +499,7 @@ def cmd_reply(args) -> int:
     if args.thread:
         target = args.thread
     elif args.comment is not None:
-        target = _canon_target(snap, str(args.comment))
+        target = _canon_target(snap, str(args.comment), pr)
     else:
         target = f"pr:{pr}"
     silenced = [i["code"] for i in store.open_items()
@@ -600,10 +600,13 @@ def cmd_push(args) -> int:
     bad = [x for x in d.stdout.splitlines() if router.is_forbidden(x, cfg.forbidden)]
     if bad:
         return _err("Commit chứa file cấm: " + ", ".join(bad))
-    lg = _git(["log", "--first-parent", "--no-merges", "--name-only", "--format=", f"origin/{head}..HEAD"], repo)
+    # Own first-parent commits, merges included. dense-combined lists, for a merge, only files that differ
+    # from every parent (conflict resolutions and extra edits), not files brought unchanged from the base.
+    lg = _git(["log", "--first-parent", "--diff-merges=dense-combined", "--name-only", "--format=",
+               f"origin/{head}..HEAD"], repo)
     if lg.returncode != 0:
         return _err(f"Không đọc được commit của worker: {lg.stderr.strip()}")
-    changed = sorted({x for x in lg.stdout.splitlines() if x})  # own commits only: base merges are not counted
+    changed = sorted({x for x in lg.stdout.splitlines() if x})
     pats = (cfg.pr_rules or {}).get("b_only_patterns")
     pats = DEFAULT_B_ONLY if pats is None else pats  # an explicit empty list disables the pattern check
     b_only = [x for x in changed if any(fnmatch.fnmatchcase(x.lower(), q.lower())

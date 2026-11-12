@@ -422,6 +422,65 @@ def test_push_guard_ignores_files_from_base_merge(tmp_git_repo_with_remote, tmp_
     assert rc == 0, out
 
 
+def test_push_guard_counts_evil_merge_edits(tmp_git_repo_with_remote, tmp_path, proj, capsys, monkeypatch):
+    r = tmp_git_repo_with_remote
+    cfg, store, opts, bid = push_setup(r, proj)
+    monkeypatch.chdir(r)
+    other = tmp_path / "other"
+    subprocess.run(["git", "clone", "-q", str(tmp_path / "remote.git"), str(other)], check=True)
+    git(other, "config", "user.email", "t@t")
+    git(other, "config", "user.name", "t")
+    git(other, "checkout", "-q", "-b", "base", "origin/feat/x")
+    commit(other, "base/f0.py")
+    git(other, "push", "-q", "origin", "base")
+    git(r, "fetch", "-q", "origin", "base")
+    git(r, "merge", "-q", "--no-commit", "--no-ff", "origin/base")
+    (r / "db" / "migrations").mkdir(parents=True)
+    (r / "db" / "migrations" / "1.sql").write_text("x")  # extra edit hidden inside the merge commit
+    git(r, "add", "db")
+    git(r, "commit", "-q", "--no-edit")
+    rc, out = run(capsys, ["push", str(bid), *opts])
+    assert rc == 1 and "1.sql" in out and "mục B" in out
+    git(r, "reset", "-q", "--hard", "HEAD^")
+    git(r, "merge", "-q", "--no-commit", "--no-ff", "origin/base")
+    (r / "src").mkdir(exist_ok=True)
+    for i in range(4):
+        (r / "src" / f"e{i}.py").write_text("x")
+    git(r, "add", "src")
+    git(r, "commit", "-q", "--no-edit")
+    rc, out = run(capsys, ["push", str(bid), *opts])
+    assert rc == 1 and "> 3" in out and "plan P" in out
+    code = store.add_item("P", 581, bid, "plan", "body", T0)
+    _approve_at(store, cfg, code, cli._now())
+    rc, out = run(capsys, ["push", str(bid), *opts])
+    assert rc == 0, out
+
+
+def test_canon_target_unknown_id_maps_to_pr():
+    s = {"threads": [{"id": "PRRT_1", "comments": [{"id": "PRRC_1", "url": "x#discussion_r11"}]}]}
+    assert cli._canon_target(s, "11", 581) == "PRRT_1"
+    assert cli._canon_target(s, "PRRC_1", 581) == "PRRT_1"
+    assert cli._canon_target(s, "PRRT_7", 581) == "PRRT_7"
+    assert cli._canon_target(s, "999", 581) == "pr:581"  # top-level comment / review id
+    assert cli._canon_target(None, "IC_5", 581) == "pr:581"
+    assert cli._canon_target(s, "pr:581", 581) == "pr:581"
+    assert cli._canon_target(s, "", 581) == ""
+
+
+def test_reply_unknown_comment_id_silenced_by_pr_q(tmp_git_repo, tmp_path, proj, capsys, monkeypatch):
+    cfg, store, opts = proj(tmp_git_repo)
+    store.save_snapshot(581, router.snapshot_to_dict(snap()))
+    bid = store.create_batch(581, [], T0)
+    store.transition(bid, "delivered", T0, session="s")
+    gh = FakeGitHub()
+    monkeypatch.setattr(cli, "_github", lambda x: gh)
+    f = tmp_path / "r.md"
+    f.write_text("hi")
+    store.add_item("Q", 581, bid, "t", "b", T0, target="pr:581")
+    assert run(capsys, ["reply", str(bid), "--comment", "777", "--file", str(f), *opts])[0] == 1
+    assert gh.posted == []
+
+
 def _approve_at(store, cfg, code, when):
     from autopilot import answers
     answers.approve(store, cfg, code, True, "", when)
