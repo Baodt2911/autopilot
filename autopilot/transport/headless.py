@@ -276,6 +276,9 @@ class HeadlessTransport:
         now = now or _now()
         session = self._session(wt)
         if not session or self.store.kv_get(f"session-closed:{wt.path}"):
+            # a foreign `claude` owns the worktree even if the router never ran a worker there
+            if not self.store.kv_get(f"session-closed:{wt.path}") and self._owner_busy(wt, self._run(wt)):
+                return WorkerStatus("owner_busy", None, None)
             return WorkerStatus("none", None, None)
         run = self._run(wt)
         try:

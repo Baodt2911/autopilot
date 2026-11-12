@@ -241,3 +241,30 @@ def test_github_down_still_runs_health_and_reminders(env):
     env.scan(T0 + 20 * M)
     assert calls == ["rem"] and statuses
     assert (env.cfg.data_dir / "STATE.md").exists()
+
+
+def test_owner_busy_without_session_queues_and_never_starts(env):
+    commented(env)
+    env.t.states["feat/x"] = WorkerStatus("owner_busy", None, None)
+    env.scan(T0)
+    r = env.scan(T0 + 10 * M)
+    assert env.t.launches() == []
+    assert any(getattr(a, "reason", "") == "owner_session" for a in r.actions)
+
+
+def test_spawn_failures_escalate_after_three_with_one_alert(env):
+    from autopilot.transport import TransportError
+
+    def boom(wt, prompt, batch_id):
+        raise TransportError("spawn failed: no such file")
+
+    env.t.start_worker = boom
+    commented(env)
+    env.scan(T0)
+    for i in range(1, 6):
+        env.scan(T0 + i * 10 * M)
+        if i < 3:
+            assert env.store.batch(1)["status"] == "new"
+    assert env.store.kv_get("spawn_fail:1") == "3"
+    assert env.store.batch(1)["status"] == "escalated"
+    assert len([a for a in env.n.alerts if "escalate" in a[1].lower() or "leo thang" in a[1].lower()]) == 1

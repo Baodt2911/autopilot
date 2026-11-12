@@ -283,3 +283,17 @@ def test_nested_worktree_process_belongs_to_deepest(fx, tmp_path):
     fx.t.set_worktrees([root.path, child.path])
     assert fx.t.status(child).state == "owner_busy"
     assert fx.t.status(root).state == "idle"
+
+
+def test_foreign_claude_without_stored_session_is_owner_busy(fx):
+    d = fx.proc / "60"
+    d.mkdir()
+    (d / "cmdline").write_bytes(b"/home/u/.local/bin/claude\0")
+    os.symlink(fx.wt.path, d / "cwd")
+    assert fx.store.kv_get(f"session:{fx.wt.path}") is None
+    st = fx.t.status(fx.wt)
+    assert st.state == "owner_busy" and st.session is None
+    (d / "cwd").unlink()
+    (d / "cmdline").unlink()
+    d.rmdir()
+    assert fx.t.status(fx.wt).state == "none"

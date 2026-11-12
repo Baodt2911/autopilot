@@ -22,6 +22,7 @@ from .store import InvalidTransition, Store
 from .transport import TransportError, WorkerBusy
 from .worktrees import list_worktrees
 
+MAX_SPAWN_FAILS = 3
 BACKUP_ROOT = Path.home() / ".autopilot-backup"
 GH_FAIL_ALERT = timedelta(minutes=30)
 MAX_ATTEMPTS = 3  # first delivery + 2 re-runs
@@ -139,10 +140,20 @@ def _launch(cfg, store, transport, notifier, wt: Worktree, session: str | None, 
     except TransportError as e:
         msg = f"Không giao được lô {bid} ở {wt.branch}: {e}"
         report.incidents.append(msg)
+        fails = int(store.kv_get(f"spawn_fail:{bid}") or 0) + 1
+        store.kv_set(f"spawn_fail:{bid}", str(fails))
+        if fails >= MAX_SPAWN_FAILS:
+            if _try_transition(store, bid, "escalated", now):
+                esc = f"Lô #{bid} ({wt.branch}) lỗi spawn {fails} lần liên tiếp: đã escalate ({e})"
+                report.incidents.append(esc)
+                store.log(snap.number, "escalated", esc, now)
+                notifier.alert("incident", f"Lô {bid} bị escalate", esc, now)
+            return False
         if store.kv_get(f"launch_err:{bid}") != str(e):
             store.kv_set(f"launch_err:{bid}", str(e))
             notifier.alert("incident", f"Lô {bid} không giao được", msg, now)
         return False
+    store.kv_set(f"spawn_fail:{bid}", None)
     _try_transition(store, bid, "delivered", now, session=session)
     store.log(snap.number, "delivered", f"Lô #{bid} đã giao cho worker ({wt.branch})", now, snap.url)
     return True

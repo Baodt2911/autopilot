@@ -10,8 +10,8 @@ from pathlib import Path
 from autopilot.models import Event
 
 TRANSITIONS: dict[str, frozenset[str]] = {
-    "new": frozenset({"delivered", "queued", "cancelled"}),
-    "queued": frozenset({"delivered", "cancelled"}),
+    "new": frozenset({"delivered", "queued", "escalated", "cancelled"}),
+    "queued": frozenset({"delivered", "escalated", "cancelled"}),
     "delivered": frozenset({"acked", "delivered", "escalated", "waiting_limit", "cancelled"}),
     "acked": frozenset({"in_progress", "delivered", "escalated", "waiting_limit", "cancelled"}),
     "in_progress": frozenset({"done", "waiting_owner", "waiting_limit", "delivered", "escalated", "cancelled"}),
