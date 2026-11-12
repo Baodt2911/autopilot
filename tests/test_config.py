@@ -46,7 +46,7 @@ def test_worker_defaults_and_toml_merge(tmp_path):
     assert w["permission_mode"] == "acceptEdits"
     assert "Bash(rtk git add:*)" in w["allowed_tools"]
     assert not any("pnpm" in t for t in w["allowed_tools"])
-    for c in ("fetch", "merge", "show", "grep", "log", "rev-parse", "branch", "restore", "ls-files"):
+    for c in ("fetch", "merge", "show", "grep", "log", "rev-parse", "branch --show-current", "restore", "ls-files"):
         assert f"Bash(git {c}:*)" in w["allowed_tools"] and f"Bash(rtk git {c}:*)" in w["allowed_tools"]
     for c in ("git push", "rm", "git rebase", "git reset --hard", "git push --force", "gh"):
         assert f"Bash({c}:*)" in w["disallowed_tools"] and f"Bash(rtk {c}:*)" in w["disallowed_tools"]

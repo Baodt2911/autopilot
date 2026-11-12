@@ -20,7 +20,7 @@ DEFAULT_FORBIDDEN = (
     "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp",
 )
 
-_EXTRA_GIT = ("fetch", "merge", "show", "grep", "log", "rev-parse", "branch", "restore", "ls-files")
+_EXTRA_GIT = ("fetch", "merge", "show", "grep", "log", "rev-parse", "branch --show-current", "restore", "ls-files")
 _EXTRA_DENY = ("git rebase", "git reset --hard", "git push --force", "gh")
 
 _DICT_DEFAULTS: dict[str, dict] = {

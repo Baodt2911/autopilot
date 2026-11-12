@@ -302,7 +302,7 @@ def test_reply_refusals(tmp_git_repo, tmp_path, proj, capsys, monkeypatch):
     f.write_text("text")
     a = ["reply", str(bid), "--thread", "PRRT_1", "--file", str(f), *opts]
     # C2 silence: open Q targeting the thread, or one of its comments, or a comment id
-    code = store.add_item("Q", 581, bid, "t", "b", T0, target="PRRC_1")
+    code = store.add_item("Q", 581, bid, "t", "b", T0, target="PRRT_1")
     rc, out = run(capsys, a)
     assert rc == 1 and "im lặng" in out
     rc, out = run(capsys, ["reply", str(bid), "--comment", "7", "--file", str(f), *opts])
@@ -401,3 +401,102 @@ def test_push_refuses_b_only_pattern(tmp_git_repo_with_remote, proj, capsys, mon
     monkeypatch.chdir(r)
     rc, out = run(capsys, ["push", str(bid), *opts])
     assert rc == 1 and "migration.sql" in out and "mục B" in out
+
+
+def test_push_guard_ignores_files_from_base_merge(tmp_git_repo_with_remote, tmp_path, proj, capsys, monkeypatch):
+    r = tmp_git_repo_with_remote
+    cfg, store, opts, bid = push_setup(r, proj)
+    monkeypatch.chdir(r)
+    other = tmp_path / "other"
+    subprocess.run(["git", "clone", "-q", str(tmp_path / "remote.git"), str(other)], check=True)
+    git(other, "config", "user.email", "t@t")
+    git(other, "config", "user.name", "t")
+    git(other, "checkout", "-q", "-b", "base", "origin/feat/x")
+    for i in range(5):
+        commit(other, f"base/f{i}.py")
+    git(other, "push", "-q", "origin", "base")
+    git(r, "fetch", "-q", "origin", "base")
+    commit(r, "src/mine.py")
+    git(r, "merge", "-q", "--no-edit", "origin/base")  # base merge brings 5 files
+    rc, out = run(capsys, ["push", str(bid), *opts])
+    assert rc == 0, out
+
+
+def _approve_at(store, cfg, code, when):
+    from autopilot import answers
+    answers.approve(store, cfg, code, True, "", when)
+
+
+def test_push_plan_approval_must_be_after_last_push_and_is_consumed(tmp_git_repo_with_remote, proj, capsys,
+                                                                    monkeypatch):
+    from datetime import timedelta
+    r = tmp_git_repo_with_remote
+    cfg, store, opts, bid = push_setup(r, proj)
+    monkeypatch.chdir(r)
+    old = store.add_item("P", 581, bid, "old", "b", T0)
+    _approve_at(store, cfg, old, T0)
+    store.log(581, "pushed", "pushed abc", T0 + timedelta(hours=1))  # a push happened after that approval
+    for i in range(4):
+        commit(r, f"src/f{i}.py")
+    rc, out = run(capsys, ["push", str(bid), *opts])
+    assert rc == 1 and "plan P" in out  # old approval does not authorize
+    new = store.add_item("P", 581, bid, "new", "b", T0)
+    _approve_at(store, cfg, new, T0 + timedelta(hours=2))
+    assert run(capsys, ["push", str(bid), *opts])[0] == 0
+    assert store.kv_get(f"plan_used:{new}") == "1"
+    for i in range(4):
+        commit(r, f"src/g{i}.py")
+    store.log(581, "pushed", "x", _now_future())
+    rc, out = run(capsys, ["push", str(bid), *opts])
+    assert rc == 1  # the consumed approval (and the later push) authorize nothing
+
+
+def _now_future():
+    return cli._now() + __import__("datetime").timedelta(hours=1)
+
+
+def test_b_only_patterns_case_insensitive_empty_list_disables(tmp_git_repo_with_remote, tmp_path, proj, capsys,
+                                                               monkeypatch):
+    r = tmp_git_repo_with_remote
+    cfg, store, opts, bid = push_setup(r, proj)
+    monkeypatch.chdir(r)
+    commit(r, "API/Migrations/1/Migration.SQL")
+    commit(r, "docs/api-contract-v2.md")
+    rc, out = run(capsys, ["push", str(bid), *opts])
+    assert rc == 1 and "Migration.SQL" in out and "api-contract-v2.md" in out
+    cd = Path(opts[1])
+    (cd / "t.toml").write_text((cd / "t.toml").read_text() + "[pr_rules]\nb_only_patterns = []\n")
+    assert run(capsys, ["push", str(bid), *opts])[0] == 0
+
+
+def test_c2_targets_are_canonical_thread_ids(tmp_git_repo, tmp_path, proj, capsys, monkeypatch):
+    from dataclasses import replace
+    from autopilot.models import Thread
+    from conftest import comment
+    cfg, store, opts = proj(tmp_git_repo)
+    c = replace(comment("PRRC_9"), url="https://github.com/o/r/pull/581#discussion_r4242")
+    store.save_snapshot(581, router.snapshot_to_dict(snap(threads=(Thread("PRRT_9", False, (c,)),))))
+    bid = store.create_batch(581, [], T0)
+    store.transition(bid, "delivered", T0, session="s")
+    gh = FakeGitHub()
+    monkeypatch.setattr(cli, "_github", lambda x: gh)
+    f = tmp_path / "r.md"
+    f.write_text("hi")
+    body = tmp_path / "b.md"
+    body.write_text("q")
+    # Q created with a comment db id is stored under the thread id
+    rc, out = run(capsys, ["item", str(bid), "Q", "--title", "t", "--file", str(body), "--target", "4242", *opts])
+    code = out.strip().splitlines()[-1]
+    assert store.item(code)["target"] == "PRRT_9"
+    assert run(capsys, ["reply", str(bid), "--thread", "PRRT_9", "--file", str(f), *opts])[0] == 1
+    assert run(capsys, ["reply", str(bid), "--comment", "4242", "--file", str(f), *opts])[0] == 1
+    store.resolve_item(code, "A", "", "", T0)
+    # Q via thread id blocks reply --comment <id in that thread>
+    code = store.add_item("Q", 581, bid, "t", "b", T0, target="PRRT_9")
+    assert run(capsys, ["reply", str(bid), "--comment", "4242", "--file", str(f), *opts])[0] == 1
+    store.resolve_item(code, "A", "", "", T0)
+    # Q pr:<n> blocks --pr-comment only
+    store.add_item("Q", 581, bid, "t", "b", T0, target="pr:581")
+    assert run(capsys, ["reply", str(bid), "--pr-comment", "--file", str(f), *opts])[0] == 1
+    assert run(capsys, ["reply", str(bid), "--thread", "PRRT_9", "--file", str(f), *opts])[0] == 0
+    assert len(gh.posted) == 1

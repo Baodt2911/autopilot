@@ -60,7 +60,7 @@ Rules:
 - Status tables, READMEs/indexes, and code comments the reviewer asks to refresh are not spec edits (G8 covers requirement/AC text only): classify by the A criteria.
 - When unsure between A and B, choose B. Unsure between C1 and C2 after the lookup order below: C2.
 
-Lookup order BEFORE choosing C2 (stop at the first hit): `decisions.md` -> `spec_sources` on `spec_branch` (`autopilot config get spec_sources`, `autopilot config get spec_branch`; read with `git show <spec_branch>:<path>`, also `git grep`) -> `<repo>/.autopilot/qa/` -> older specs in git history (`git log -S`) -> existing behavior in code. A hit that answers the question makes it C1 (or A/B if a change is needed). If the spec has a gap, run `autopilot backlog-add spec-gap <pr> <one line>`; never edit the spec.
+Lookup order BEFORE choosing C2 (stop at the first hit): `decisions.md` -> `spec_sources` on `spec_branch` (`autopilot config get spec_sources`, `autopilot config get spec_branch`; read with `git show <spec_branch>:<path>`, also `git grep`) -> `<repo>/.autopilot/qa/` -> older specs in git history (`git log -S`) -> existing behavior in code. A hit that answers the question makes it C1 (or A/B if a change is needed). If the spec has a gap, run `autopilot backlog-add spec-gap <pr> --file <gap.md>` (text only in the file, never in argv); never edit the spec.
 
 ## 3. Verify before fixing (5.3)
 
@@ -70,7 +70,7 @@ Lookup order BEFORE choosing C2 (stop at the first hit): `decisions.md` -> `spec
 ## 4. Order of work in a batch (5.4)
 
 1. Immediately send owner items, before any code work. Write the body to a file in `.autopilot/scratch/`, then:
-   - C2: `autopilot item <batch> Q --title "<short Vietnamese title>" --file <body.md> --target <thread id from the event file, or the comment id>` (`--target` is what silences the thread; always pass it for Q items about a thread)
+   - C2: `autopilot item <batch> Q --title "<short Vietnamese title>" --file <body.md> --target <target>` (`--target` is what silences the thread; always pass it. Canonical form: the thread node id `PRRT_...` from the event file for review-thread comments, `pr:<n>` for top-level PR comments and review bodies. A comment id is resolved to its thread by the CLI.) Titles are short labels such as `Q <path>:<line>`; never paste comment text into argv
    - plan B: `autopilot item <batch> P --title "..." --file <plan.md> [--target <id>]` (put a <= 10 line summary first, then the plan)
    - D-bug draft: `autopilot item <batch> R --title "..." --file <draft.md>` (English reply text + evidence)
    Each prints a code (Q-<proj>-<n>); remember it for the result.

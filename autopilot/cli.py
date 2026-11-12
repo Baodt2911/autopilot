@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import re
 import subprocess
 import sys
 from datetime import datetime
@@ -430,11 +431,25 @@ def cmd_start(args) -> int:
     return 0
 
 
+def _canon_target(snap: dict | None, raw: str) -> str:
+    """Canonical C2 target: thread node id (PRRT_...) for review-thread comments, `pr:<n>` for the rest."""
+    raw = (raw or "").strip()
+    if not raw or not snap:
+        return raw
+    for t in snap.get("threads", []):
+        if raw == t["id"]:
+            return raw
+        for c in t.get("comments", []):
+            if raw == c["id"] or (raw.isdigit() and re.search(rf"discussion_r{raw}$", c.get("url") or "")):
+                return t["id"]
+    return raw
+
+
 def cmd_item(args) -> int:
     cfg, store = _ctx(args)
     b = _batch(store, args.batch)
     body = Path(args.file).read_text(encoding="utf-8")
-    code = store.add_item(args.kind, b["pr"], args.batch, args.title, body, _now(), target=args.target or "")
+    code = store.add_item(args.kind, b["pr"], args.batch, args.title, body, _now(), target=_canon_target(store.snapshot(b["pr"]), args.target or ""))
     if args.kind == "P":  # the CLI keeps its own copy of the plan; the worker's scratch file is disposable
         from .render import atomic_write
         atomic_write(cfg.plans_dir / f"{code}.md", body)
@@ -481,19 +496,18 @@ def cmd_reply(args) -> int:
         return _err(f"Lô {args.batch} đã kết thúc ({b['status']}): không reply.")
     if not snap or snap.get("state") != "OPEN":
         return _err(f"PR #{pr} không còn mở (hoặc chưa có snapshot): không reply.")
-    target = args.thread or (str(args.comment) if args.comment is not None else "")
-    ids = {target}
     if args.thread:
-        for t in snap.get("threads", []):
-            if t["id"] == args.thread:
-                ids |= {c["id"] for c in t.get("comments", [])}
-    if target:
-        silenced = [i["code"] for i in store.open_items()
-                    if i["pr"] == pr and i["kind"] == "Q" and i.get("target") and i["target"] in ids]
-        if silenced:
-            return _err(f"Thread đang chờ owner ({', '.join(silenced)}): im lặng, không reply (G7).")
+        target = args.thread
+    elif args.comment is not None:
+        target = _canon_target(snap, str(args.comment))
+    else:
+        target = f"pr:{pr}"
+    silenced = [i["code"] for i in store.open_items()
+                if i["pr"] == pr and i["kind"] == "Q" and i.get("target") == target]
+    if silenced:
+        return _err(f"Thread đang chờ owner ({', '.join(silenced)}): im lặng, không reply (G7).")
     # the round counter is bumped when the batch is created, so the 3rd round itself must still reply: use ">"
-    if args.thread and store.round_count(args.thread) > cfg.limits["thread_rounds"]:
+    if target.startswith("PRRT_") and store.round_count(target) > cfg.limits["thread_rounds"]:
         return _err(f"Thread đã quá {cfg.limits['thread_rounds']} vòng reply (G9): không reply, hãy xếp C2.")
     body = Path(args.file).read_text(encoding="utf-8")
     if not body.strip():
@@ -505,7 +519,6 @@ def cmd_reply(args) -> int:
         url = gh.reply_to_comment(pr, args.comment, body)
     else:
         url = gh.post_issue_comment(pr, body)
-        target = "pr-comment"
     store.log(pr, "replied", f"replied {target} {url}", _now(), url)
     print(f"Đã reply: {url}")
     return 0
@@ -544,13 +557,19 @@ def cmd_guard_staged(args) -> int:
     return 0
 
 
-DEFAULT_B_ONLY = ("**/migrations/**", "**/*.prisma", "**/schema*.sql", "**/openapi*.y*ml",
-                  "docs/**/api-contract*.md")
+DEFAULT_B_ONLY = ("**/migrations/**", "**/*.prisma", "**/schema*.sql", "**/openapi*.y*ml", "**/openapi*.json",
+                  "docs/**/api-contract*.md", "docs/*api-contract*.md")
 
 
-def _approved_plan(store: Store, pr: int) -> bool:
-    return any(i["kind"] == "P" and i["pr"] == pr and i["status"] == "closed" and i["answer"] == "approved"
-               for i in store.closed_items())
+def _approved_plan(store: Store, pr: int) -> str | None:
+    """Code of an approved P item for this PR, approved after the last push and not yet used."""
+    pushed = [t["at"] for t in store.timeline(pr) if t["kind"] == "pushed"]
+    last = max(pushed, default=None)
+    for i in store.closed_items():
+        if (i["kind"] == "P" and i["pr"] == pr and i["answer"] == "approved"
+                and (last is None or i["resolved_at"] > last) and not store.kv_get(f"plan_used:{i['code']}")):
+            return i["code"]
+    return None
 
 
 def cmd_push(args) -> int:
@@ -581,10 +600,18 @@ def cmd_push(args) -> int:
     bad = [x for x in d.stdout.splitlines() if router.is_forbidden(x, cfg.forbidden)]
     if bad:
         return _err("Commit chứa file cấm: " + ", ".join(bad))
-    changed = [x for x in d.stdout.splitlines() if x]
-    pats = (cfg.pr_rules or {}).get("b_only_patterns") or DEFAULT_B_ONLY
-    b_only = [x for x in changed if any(fnmatch.fnmatchcase(x, q) or fnmatch.fnmatchcase("/" + x, q) for q in pats)]
-    if (len(changed) > 3 or b_only) and not _approved_plan(store, b["pr"]):
+    lg = _git(["log", "--first-parent", "--no-merges", "--name-only", "--format=", f"origin/{head}..HEAD"], repo)
+    if lg.returncode != 0:
+        return _err(f"Không đọc được commit của worker: {lg.stderr.strip()}")
+    changed = sorted({x for x in lg.stdout.splitlines() if x})  # own commits only: base merges are not counted
+    pats = (cfg.pr_rules or {}).get("b_only_patterns")
+    pats = DEFAULT_B_ONLY if pats is None else pats  # an explicit empty list disables the pattern check
+    b_only = [x for x in changed if any(fnmatch.fnmatchcase(x.lower(), q.lower())
+                                        or fnmatch.fnmatchcase("/" + x.lower(), q.lower()) for q in pats)]
+    plan = None
+    if len(changed) > 3 or b_only:
+        plan = _approved_plan(store, b["pr"])
+    if (len(changed) > 3 or b_only) and not plan:
         why = (f"chạm file chỉ cho mục B: {', '.join(b_only)}" if b_only
                else f"{len(changed)} file thay đổi (> 3)")
         return _err(f"Không push: {why}. Đây không phải mục A: hãy viết plan P "
@@ -595,6 +622,8 @@ def cmd_push(args) -> int:
     p = _git(["push", "origin", f"HEAD:{head}"], repo)
     if p.returncode != 0:
         return _err(f"git push thất bại: {p.stderr.strip()}")
+    if plan:
+        store.kv_set(f"plan_used:{plan}", "1")  # one approved plan authorizes one push
     sha = _git(["rev-parse", "HEAD"], repo).stdout.strip()
     store.log(b["pr"], "pushed", f"pushed {sha}", _now())
     print(f"Đã push {sha[:10]} lên origin/{head}.")
