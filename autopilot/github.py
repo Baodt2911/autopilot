@@ -236,6 +236,12 @@ class GitHub:
                 out.append(self._snapshot(n))
         return out
 
+    def pr_by_number(self, number: int) -> PRSnapshot | None:
+        """Read-only fetch of one PR in any state (open, merged, closed)."""
+        owner, name = self.slug().split("/", 1)
+        n = self._graphql(PR_BY_NUMBER_QUERY, owner=owner, name=name, number=number)["repository"]["pullRequest"]
+        return self._snapshot(n) if n else None
+
     def post_comment(self, pr: int, body: str) -> str:
         return self._rest_post_comment(pr, body)
 

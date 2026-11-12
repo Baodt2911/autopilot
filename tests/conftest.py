@@ -41,6 +41,9 @@ class FakeGitHub:
     def recently_closed(self, numbers):
         return [s for s in self.closed if s.number in numbers]
 
+    def pr_by_number(self, number):
+        return next((s for s in [*self.open, *self.closed] if s.number == number), None)
+
     def post_issue_comment(self, issue, body):
         self.posted.append((issue, body))
         return f"https://gh/issues/{issue}#c"

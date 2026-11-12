@@ -221,3 +221,30 @@ def test_missing_file_is_vietnamese_error(tmp_git_repo, proj, capsys):
     cfg, store, opts, bid = push_setup(tmp_git_repo, proj)
     rc, out = run(capsys, ["item", str(bid), "Q", "--title", "t", "--file", "/nonexistent/x", *opts])
     assert rc == 1 and "Lỗi" in out and "Traceback" not in out
+
+
+def test_export_events_writes_files_only(tmp_git_repo, tmp_path, monkeypatch, capsys):
+    from conftest import comment
+    cd = tmp_path / "cfg"
+    cd.mkdir()
+    (cd / "t.toml").write_text(f'repo = "{tmp_git_repo}"\nauthor = "me"\ngh_user = "me"\n')
+    gh = FakeGitHub()
+    gh.closed = [snap(579, state="MERGED", comments=(comment("c9", "why this?", author="rev"),))]
+    monkeypatch.setattr(cli, "_github", lambda cfg: gh)
+    monkeypatch.setattr(cli, "_transport", lambda *a: pytest.fail("no spawn"))
+    out = tmp_path / "out"
+    rc, text = run(capsys, ["scan", "--dry-run", "--export-events", "--pr", "579", "--out", str(out),
+                            "--config-dir", str(cd), "--project", "t"])
+    assert rc == 0, text
+    files = list(out.glob("579-*.md"))
+    assert len(files) == 1
+    body = files[0].read_text()
+    assert "why this?" in body and "## Bắt buộc C2" in body
+    assert not (tmp_git_repo / ".autopilot").exists()  # zero store writes
+
+
+def test_export_events_requires_pr_out_and_dry_run(capsys):
+    rc, _ = run(capsys, ["scan", "--export-events", "--pr", "1", "--out", "x"])
+    assert rc == 2
+    rc, _ = run(capsys, ["scan", "--dry-run", "--export-events", "--out", "x"])
+    assert rc == 2

@@ -144,7 +144,56 @@ def _describe(a) -> str:
     return str(a)
 
 
+def _export_events(args) -> int:
+    """Read-only: fetch one PR (any state), detect with prev=None, write the event file to --out."""
+    import types
+    from . import detect
+    from .render import event_file
+    cd = Path(args.config_dir) if args.config_dir else DEFAULT_CONFIG_DIR
+    name = args.project
+    if not name:
+        projects = list_projects(cd)
+        if len(projects) != 1:
+            return _err("Chưa chọn dự án: dùng --project <tên>.")
+        name = projects[0]
+    try:
+        cfg = load_config(name, cd)
+    except (FileNotFoundError, ValueError) as e:
+        return _err(f"Không đọc được cấu hình dự án '{name}': {e}")
+    snap = _github(cfg).pr_by_number(args.pr)
+    if snap is None:
+        return _err(f"Không tìm thấy PR #{args.pr}.")
+    now = _now()
+    events = detect.detect(None, snap, cfg, now)
+    if snap.state != "OPEN":  # detect() yields nothing for closed PRs; export their comments anyway
+        events = detect.detect(None, _as_open(snap), cfg, now)
+    meta: dict = {"force_c2_threads": [], "pushback": {}, "force_c2": []}
+    for e in events:
+        tid, pb = e.payload.get("thread_id"), int(e.payload.get("pushback") or 0)
+        if e.kind == "thread" and tid:
+            meta["pushback"][tid] = max(meta["pushback"].get(tid, 0), pb)
+            if pb >= 2:
+                if tid not in meta["force_c2_threads"]:
+                    meta["force_c2_threads"].append(tid)
+                meta["force_c2"].append(e.id)
+    out = Path(args.out)
+    proxy = types.SimpleNamespace(name=cfg.name, events_dir=out)  # event_file only reads these two
+    path = event_file(proxy, {"id": "eval"}, events, snap, meta)
+    print(f"[export] {len(events)} sự kiện -> {path}")
+    return 0
+
+
+def _as_open(snap):
+    from dataclasses import replace
+    return replace(snap, state="OPEN", mergeable="UNKNOWN", failed_checks=())
+
+
 def cmd_scan(args) -> int:
+    if args.export_events:
+        if not (args.dry_run and args.pr is not None and args.out) or args.claim:
+            print("--export-events cần --dry-run, --pr N và --out DIR (không dùng với --claim).", file=sys.stderr)
+            return 2
+        return _export_events(args)
     if args.claim and args.pr is None:
         return _err("--claim cần đi kèm --pr N.")
     if args.claim and args.dry_run:
@@ -479,6 +528,8 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--dry-run", action="store_true")
     sp.add_argument("--pr", type=int)
     sp.add_argument("--claim", action="store_true")
+    sp.add_argument("--export-events", action="store_true")
+    sp.add_argument("--out")
     for n, fn in (("pause", cmd_pause), ("resume", cmd_resume)):
         add(n, fn).add_argument("pr", type=int, nargs="?")
     sp = add("answer", cmd_answer)
