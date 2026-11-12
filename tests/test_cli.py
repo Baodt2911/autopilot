@@ -196,3 +196,28 @@ def test_pause_resume_pr_requeues_wake_cap_events(tmp_git_repo, proj, capsys):
     assert store.events(status="new")[0].id == "e1"
     assert run(capsys, ["pause", *opts])[0] == 0 and store.kv_get("paused")
     assert run(capsys, ["resume", *opts])[0] == 0 and store.kv_get("paused") is None
+
+
+def test_dry_run_claim_rejected_and_writes_nothing(tmp_git_repo, proj, capsys):
+    cfg, store, opts = proj(tmp_git_repo)
+    rc, out = run(capsys, ["scan", "--dry-run", "--pr", "581", "--claim", *opts])
+    assert rc == 2 and "--claim" in out
+    assert store.batches() == [] and not cfg.events_dir.exists()
+
+
+def test_push_refuses_terminal_batch_or_closed_pr(tmp_git_repo_with_remote, proj, capsys, monkeypatch):
+    r = tmp_git_repo_with_remote
+    cfg, store, opts, bid = push_setup(r, proj)
+    monkeypatch.chdir(r)
+    store.transition(bid, "cancelled", T0)
+    rc, out = run(capsys, ["push", str(bid), *opts])
+    assert rc == 1 and "không push" in out
+    b2 = store.create_batch(581, [], T0)
+    store.save_snapshot(581, router.snapshot_to_dict(snap(state="MERGED")))
+    assert run(capsys, ["push", str(b2), *opts])[0] == 1
+
+
+def test_missing_file_is_vietnamese_error(tmp_git_repo, proj, capsys):
+    cfg, store, opts, bid = push_setup(tmp_git_repo, proj)
+    rc, out = run(capsys, ["item", str(bid), "Q", "--title", "t", "--file", "/nonexistent/x", *opts])
+    assert rc == 1 and "Lỗi" in out and "Traceback" not in out

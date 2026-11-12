@@ -109,7 +109,7 @@ def _try_transition(store: Store, bid: int, to: str, now: datetime, **kw) -> boo
         return False
 
 
-def _alert(notifier, store: Store, rw: bool, kind: str, title: str, body: str, now: datetime) -> None:
+def _alert(notifier, rw: bool, kind: str, title: str, body: str, now: datetime) -> None:
     if rw:
         notifier.alert(kind, title, body, now)
 
@@ -156,13 +156,13 @@ def _cancel_pr(store: Store, transport, wt: Worktree | None, snap: PRSnapshot, n
     for b in store.batches(pr=pr):
         if b["status"] not in _TERMINAL and _try_transition(store, b["id"], "cancelled", now):
             session = session or b["session"]
-            report.actions.append(f"cancel batch {b['id']}")
+            report.actions.append(f"hủy lô {b['id']}")
     if snap.state == "MERGED":
         store.log(pr, "merged", f"PR #{pr} đã merge", now, snap.url)
         if wt is not None:
             session = session if session and session != "manual" else (transport.status(wt, now).session or "")
             transport.stop_worker(wt, session, close=True)
-            report.actions.append(f"stop worker {wt.branch}")
+            report.actions.append(f"dừng worker {wt.branch}")
     else:
         store.log(pr, "closed", f"PR #{pr} đã đóng", now, snap.url)
 
@@ -232,7 +232,16 @@ def _scan(cfg, store, gh, transport, notifier, now, report, dry_run, only_pr, cl
                 store.kv_set("gh_fail_alerted", since.isoformat())
                 notifier.alert("incident", "GitHub lỗi liên tục",
                                f"Không gọi được GitHub từ {since.isoformat()}: {e}", now)
-        return report
+        # still do health, render, notifications and backup from stored state
+        try:
+            wts = list_worktrees(cfg.repo)
+        except Exception:
+            wts = {}
+        transport.set_worktrees([w.path for w in wts.values()])
+        if rw:
+            _health(store, transport, notifier, now, report, wts, set())
+        stored_open = [snapshot_from_dict(d) for d in store.snapshots().values() if d["state"] == "OPEN"]
+        return _finish(cfg, store, notifier, now, report, stored_open, [], rw)
     if rw:
         store.kv_set("gh_fail_since", None)
         store.kv_set("gh_fail_alerted", None)
@@ -268,16 +277,14 @@ def _scan(cfg, store, gh, transport, notifier, now, report, dry_run, only_pr, cl
     merged = [s for s in closed if s.state == "MERGED"]
     for w in stack_warnings(prev, {p.number: p for p in all_open}, merged):
         report.warnings.append(w)
-        _alert(notifier, store, rw, "stack", "Cảnh báo PR xếp chồng", w, now)
+        _alert(notifier, rw, "stack", "Cảnh báo PR xếp chồng", w, now)
 
-    transport_paths = []
     try:
         worktrees = list_worktrees(cfg.repo)
     except Exception as e:
         report.warnings.append(f"Không đọc được worktree: {e}")
         worktrees = {}
-    transport_paths = [w.path for w in worktrees.values()]
-    transport.set_worktrees(transport_paths)  # R20
+    transport.set_worktrees([w.path for w in worktrees.values()])  # R20
 
     if rw:
         for s in closed:
@@ -306,7 +313,7 @@ def _scan(cfg, store, gh, transport, notifier, now, report, dry_run, only_pr, cl
                           if only_pr in (None, b["pr"])]
 
     if claim:  # manual hand-off: deliver to the owner's own session, spawn nothing
-        for bid in report.batches:
+        for bid in report.batches if rw else []:
             snap = prs.get(store.batch(bid)["pr"])
             if snap is None:
                 continue
@@ -369,22 +376,29 @@ def _scan(cfg, store, gh, transport, notifier, now, report, dry_run, only_pr, cl
                 notifier.alert("incident", f"Lô {a.batch_id} không xử lý được", a.text, now)
         else:
             session = a.session if isinstance(a, Deliver) else None
-            _launch(cfg, store, transport, notifier, a.worktree, session, a.batch_id, prs[b["pr"]], now, report)
+            if _launch(cfg, store, transport, notifier, a.worktree, session, a.batch_id, prs[b["pr"]], now, report):
+                touched.add(a.worktree.branch)
 
-    # 8. health
+    # 8. health (never touches a worktree launched in this scan)
     if rw:
-        wb = {}
-        for br, w in worktrees.items():
-            st = transport.status(w, now)
-            if st.session:
-                wb[br] = (w, st.session)
-        for line in check_workers(store, transport, wb, now):
-            report.health.append(line)
-            if line.startswith("alert:"):
-                report.incidents.append(line)
-                notifier.alert("incident", "Worker cần chú ý", line, now)
+        _health(store, transport, notifier, now, report, worktrees, touched)
 
     return _finish(cfg, store, notifier, now, report, prs_open, closed, rw)
+
+
+def _health(store, transport, notifier, now, report, worktrees, touched) -> None:
+    wb = {}
+    for br, w in worktrees.items():
+        if br in touched:
+            continue
+        st = transport.status(w, now)
+        if st.session:
+            wb[br] = (w, st.session)
+    for line in check_workers(store, transport, wb, now):
+        report.health.append(line)
+        if line.startswith("alert:"):
+            report.incidents.append(line)
+            notifier.alert("incident", "Worker cần chú ý", line, now)
 
 
 def _finish(cfg, store, notifier, now, report, prs_open, closed, rw) -> ScanReport:

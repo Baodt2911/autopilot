@@ -147,6 +147,9 @@ def _describe(a) -> str:
 def cmd_scan(args) -> int:
     if args.claim and args.pr is None:
         return _err("--claim cần đi kèm --pr N.")
+    if args.claim and args.dry_run:
+        print("--dry-run không dùng chung với --claim (claim luôn ghi trạng thái).", file=sys.stderr)
+        return 2
     cfg, store = _ctx(args)
     r = router.scan(cfg, store, _github(cfg), _transport(cfg, store), _notifier(cfg, store), _now(),
                     dry_run=args.dry_run, only_pr=args.pr, claim=args.claim)
@@ -165,8 +168,11 @@ def cmd_scan(args) -> int:
             print("Không có lô nào được tạo (không có sự kiện mới hoặc PR đang có lô chạy).")
     for a in r.actions:
         print(f"  - {_describe(a)}")
+    for line in r.health:
+        print(f"  Cảnh báo worker: {line}" if line.startswith("alert:") else f"  Worker: {line}")
     for i in r.incidents:
-        print(f"  ! {i}")
+        if not i.startswith("alert:"):
+            print(f"  ! {i}")
     for w in r.warnings:
         print(f"  ? {w}")
     return 0
@@ -416,6 +422,8 @@ def cmd_push(args) -> int:
     snap = store.snapshot(b["pr"])
     if not snap:
         return _err(f"Chưa có snapshot cho PR #{b['pr']}; không biết nhánh đích.")
+    if b["status"] in ("done", "escalated", "cancelled") or snap.get("state") != "OPEN":
+        return _err(f"Lô {args.batch} đã kết thúc ({b['status']}) hoặc PR #{b['pr']} không còn mở: không push.")
     head = snap["head_ref"]
     repo = args.repo
     cur = _git(["branch", "--show-current"], repo)
@@ -526,6 +534,8 @@ def main(argv: list[str] | None = None) -> int:
         return _err(str(e))
     except (AuthError, CmdError) as e:
         return _err(f"Lỗi GitHub: {e}")
+    except (OSError, UnicodeDecodeError) as e:
+        return _err(f"Lỗi đọc/ghi file: {e}")
 
 
 if __name__ == "__main__":  # pragma: no cover

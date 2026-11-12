@@ -31,14 +31,21 @@ def test_full_cycle_comment_to_delivery(env):
 def test_dry_run_changes_nothing(env):
     commented(env)
     env.scan(T0)
+    def counts():
+        st = env.store
+        return (len(st.events()), len(st.snapshots()), len(st.batches()), len(st.timeline()))
+
+    before = counts()
     env.scan(T0 + 10 * M, dry_run=True)
     assert env.t.launches() == [] and not any(c[0] == "stop" for c in env.t.calls)
-    assert env.store.batches() == []
+    assert env.store.batches() == [] and counts() == before
     env.scan(T0 + 10 * M)  # real scan creates and delivers
     env.store.transition(1, "cancelled", T0)
     # a pending 'new' batch stays untouched in dry run
     bid = env.store.create_batch(581, [], T0)
+    before = counts()
     r = env.scan(T0 + 20 * M, dry_run=True)
+    assert counts() == before
     assert env.store.batch(bid)["status"] == "new"
     assert len(env.t.launches()) == 1
     assert bid in r.batches
@@ -178,3 +185,59 @@ def test_is_forbidden():
     pats = (".autopilot/", "*.png")
     assert router.is_forbidden(".autopilot/x", pats) and router.is_forbidden("a/b.PNG", pats)
     assert not router.is_forbidden("src/x.py", pats) and not router.is_forbidden("a/.autopilot/x", pats)
+
+
+def test_dry_run_claim_writes_nothing(env):
+    commented(env)
+    env.scan(T0)
+    bid = env.store.create_batch(581, [e.id for e in env.store.events()], T0)
+    n = len(env.store.timeline())
+    env.scan(T0 + M, dry_run=True, only_pr=581, claim=True)
+    assert env.store.batch(bid)["status"] == "new" and len(env.store.timeline()) == n
+    assert not (env.cfg.events_dir / f"581-{bid}.md").exists()
+
+
+import json
+
+
+def test_step6_and_health_never_exceed_two_reruns(env):
+    from conftest import FakeTransport
+
+    class T(FakeTransport):
+        def _rec(self, wt, bid, prompt):
+            env.store.kv_set(f"run:{wt.path}", json.dumps({"pid": 1, "pgid": 1, "starttime": "1", "batch": bid,
+                             "session": "sess-1", "started_at": "2026-11-12T10:00:00+00:00", "prompt": prompt}))
+            self.states["feat/x"] = WorkerStatus("dead", "sess-1", None)
+
+        def start_worker(self, wt, prompt, bid):
+            s = super().start_worker(wt, prompt, bid)
+            self._rec(wt, bid, prompt)
+            return s
+
+        def deliver(self, wt, session, prompt, bid):
+            super().deliver(wt, session, prompt, bid)
+            self._rec(wt, bid, prompt)
+
+    env.t = T()
+    commented(env)
+    env.scan(T0)
+    for i in range(1, 12):
+        env.scan(T0 + (10 + 16 * (i - 1)) * M)
+    assert len(env.t.launches()) <= 3
+    assert env.store.batch(1)["status"] == "escalated"
+
+
+def test_github_down_still_runs_health_and_reminders(env):
+    commented(env)
+    env.scan(T0)
+    env.scan(T0 + 10 * M)
+    (env.cfg.data_dir / "STATE.md").unlink()
+    env.gh.error = CmdError("boom")
+    calls = []
+    env.n.reminders = lambda now: calls.append("rem") or 0
+    statuses = []
+    orig = env.t.status
+    env.t.status = lambda wt, now=None: (statuses.append(1), orig(wt, now))[1]
+    env.scan(T0 + 20 * M)
+    assert calls == ["rem"] and statuses
+    assert (env.cfg.data_dir / "STATE.md").exists()

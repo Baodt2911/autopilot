@@ -93,7 +93,11 @@ def check_workers(store: Store, transport, worktrees_with_batches: dict[str, tup
         elif st.state == "dead" and batch is not None:
             key = f"reruns:{batch}"
             reruns = int(store.kv_get(key) or 0)
-            if reruns >= MAX_RERUNS:
+            try:
+                attempts = store.batch(batch)["attempts"]
+            except KeyError:
+                attempts = 0
+            if reruns >= MAX_RERUNS or attempts >= MAX_RERUNS + 1:
                 _try(store, batch, "escalated", now)
                 actions.append(f"alert: worker dead after {MAX_RERUNS} re-runs, batch {batch} escalated ({branch})")
             else:
