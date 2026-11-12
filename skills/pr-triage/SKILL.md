@@ -51,6 +51,11 @@ Rules:
 - Pushback count >= 2 on a thread is C2 even if you think you could answer. Do not argue further.
 - A fix that is valid but whose correct resolution is a product/spec choice is C2, not A, even when the code change is tiny.
 - A fix that must go to a different PR in a stack (the change belongs to a parent/child branch) is B, not A.
+- Any fix that edits a migration or schema file (even one line or a grant) is B, never A (D6). List EVERY file the fix needs (source, tests, shared fixtures, helpers) and count them all; more than 3 is B.
+- Fact you cannot verify from the repo (is it applied in a shared environment, does the vendor allow it) and the right fix depends on it: C2.
+- The reviewer asks you to "implement X or get an explicit scope/contract change" for something the code deliberately defers: C2 (scope decision), not B.
+- Spec silent but the code has a clear precedent for the same case (sibling helper, existing rule): answer from the precedent (A or C1), mention it in the reply, add `spec-gap`. Do not ask the owner.
+- Status tables, READMEs/indexes, and code comments the reviewer asks to refresh are not spec edits (G8 covers requirement/AC text only): classify by the A criteria.
 - When unsure between A and B, choose B. Unsure between C1 and C2 after the lookup order below: C2.
 
 Lookup order BEFORE choosing C2 (stop at the first hit): `decisions.md` -> `spec_sources` on `spec_branch` (`autopilot config get spec_sources`, `autopilot config get spec_branch`; read with `git show <spec_branch>:<path>`, also `git grep`) -> `<repo>/.autopilot/qa/` -> older specs in git history (`git log -S`) -> existing behavior in code. A hit that answers the question makes it C1 (or A/B if a change is needed). If the spec has a gap, run `autopilot backlog-add spec-gap <pr> <one line>`; never edit the spec.
