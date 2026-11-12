@@ -233,6 +233,43 @@ class Store:
         self._tx(f)
         return self.item(code)
 
+    def closed_items(self) -> list[dict]:
+        rows = self._db.execute("SELECT * FROM items WHERE status='closed' ORDER BY resolved_at, seq")
+        return [self._item_row(r) for r in rows]
+
+    def resolve_and_enqueue(self, code: str, answer: str, note: str, reply_hint: str,
+                            now: datetime, event: Event) -> int:
+        """Atomically: resolve item, insert answer event, create batch, mark event batched, log."""
+        def f(db):
+            r = db.execute("SELECT status, pr FROM items WHERE code=?", (code,)).fetchone()
+            if r is None:
+                raise KeyError(code)
+            if r["status"] != "open":
+                raise ItemClosed(code)
+            db.execute(
+                "UPDATE items SET status='closed', answer=?, note=?, reply_hint=?, resolved_at=? WHERE code=?",
+                (answer, note, reply_hint, now.isoformat(), code),
+            )
+            db.execute(
+                "INSERT OR IGNORE INTO events(id,pr,kind,priority,created_at,payload,status) VALUES(?,?,?,?,?,?,'batched')",
+                (event.id, event.pr, event.kind, event.priority, event.created_at.isoformat(), json.dumps(event.payload)),
+            )
+            bid = self._insert_batch(db, event.pr, [event.id], now)
+            db.execute(
+                "INSERT INTO timeline(pr,kind,text,at,url) VALUES(?,?,?,?,?)",
+                (event.pr, "answer", f"Owner trả lời {code}: {answer}", now.isoformat(), ""),
+            )
+            return bid
+
+        return self._tx(f)
+
+    @staticmethod
+    def _insert_batch(db, pr: int, event_ids: list[str], now: datetime) -> int:
+        return db.execute(
+            "INSERT INTO batches(pr,status,event_ids,created_at) VALUES(?,?,?,?)",
+            (pr, "new", json.dumps(event_ids), now.isoformat()),
+        ).lastrowid
+
     def mark_reminded(self, code: str, now: datetime) -> None:
         self._tx(lambda db: db.execute("UPDATE items SET reminded_at=? WHERE code=?", (now.isoformat(), code)))
 

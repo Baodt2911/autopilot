@@ -1,12 +1,12 @@
 """Human/worker-facing files under <repo>/.autopilot/."""
 from __future__ import annotations
 
+import fcntl
 import os
 import re
 import tempfile
 from pathlib import Path
 
-from .batching import batch_meta
 from .config import Config
 from .models import Event, PRSnapshot
 from .store import Store
@@ -28,6 +28,41 @@ def atomic_write(path: Path, text: str) -> None:
         except OSError:
             pass
         raise
+
+
+class file_lock:
+    """Exclusive flock on <data_dir>/.<name>.lock."""
+    def __init__(self, cfg: Config, name: str):
+        self.path = Path(cfg.data_dir) / f".{name}.lock"
+
+    def __enter__(self):
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.fd = os.open(self.path, os.O_CREAT | os.O_RDWR, 0o644)
+        fcntl.flock(self.fd, fcntl.LOCK_EX)
+        return self
+
+    def __exit__(self, *a):
+        os.close(self.fd)  # closing releases the lock
+
+
+def _indent(text: str) -> str:
+    return (text or "").replace("\r", "").replace("\n", "\n    ")
+
+
+def decision_section(it: dict) -> str:
+    q = " / ".join(x for x in (it.get("title") or "", (it.get("body_md") or "")) if x)
+    day = (it["resolved_at"] or it["created_at"]).date().isoformat()
+    return (f"## {it['code']} · {day}\n\n- Câu hỏi: {_indent(q)}\n- Trả lời: {_indent(it['answer'])}\n"
+            f"- Ghi chú: {_indent(it['note'])}\n- Nguồn: {_indent(it.get('source') or '')}\n")
+
+
+def write_decisions(cfg: Config, store: Store) -> None:
+    """Regenerate decisions.md from resolved items (store is the source of truth)."""
+    with file_lock(cfg, "decisions"):
+        src = {e.id: e.payload.get("source", "") for e in store.events() if e.kind == "answer"}
+        body = "\n".join(decision_section({**i, "source": src.get(f"answer:{i['code']}", "")})
+                         for i in store.closed_items())
+        atomic_write(Path(cfg.data_dir) / "decisions.md", "# Decisions\n\n" + body)
 
 
 def _fence(body: str) -> str:
@@ -131,6 +166,8 @@ def write_all(cfg: Config, store: Store, snaps: list[PRSnapshot]) -> None:
     d = Path(cfg.data_dir)
     atomic_write(d / "pending.md", pending_md(store.open_items()))
     atomic_write(d / "STATE.md", state_md(list(snaps), store))
-    bl = d / "backlog.md"
-    if not bl.exists():
-        atomic_write(bl, "# Backlog\n")
+    write_decisions(cfg, store)
+    with file_lock(cfg, "backlog"):
+        bl = d / "backlog.md"
+        if not bl.exists():
+            atomic_write(bl, "# Backlog\n")

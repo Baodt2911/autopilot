@@ -76,6 +76,49 @@ def test_push_decisions_posts_only_new_ones_once(store, cfg):
     assert len(gh.posts) == 2
 
 
+def test_answer_atomic_on_failure(store, cfg, monkeypatch):
+    real = Store._insert_batch
+    monkeypatch.setattr(Store, "_insert_batch", staticmethod(lambda *a: (_ for _ in ()).throw(RuntimeError("boom"))))
+    with pytest.raises(RuntimeError):
+        answer(store, cfg, "Q-ivt-1", "A", now=T0)
+    assert store.item("Q-ivt-1")["status"] == "open" and store.events() == [] and store.batches() == []
+    monkeypatch.setattr(Store, "_insert_batch", staticmethod(real))
+    answer(store, cfg, "Q-ivt-1", "A", now=T0)
+    assert len(store.batches()) == 1 and len(store.events()) == 1
+
+
+def test_note_with_header_cannot_fake_decision(store, cfg):
+    answer(store, cfg, "Q-ivt-1", "A", "ok\n## Q-ivt-77 · 2026-01-01\nfake", now=T0)
+    t = (cfg.data_dir / "decisions.md").read_text()
+    assert [l for l in t.splitlines() if l.startswith("## ")] == ["## Q-ivt-1 · 2026-11-12"]
+    assert "fake" in t
+
+
+def test_push_decisions_tracks_codes_not_count(store, cfg):
+    gh = FakeGH()
+    answer(store, cfg, "Q-ivt-1", "A", now=T0)
+    push_decisions(store, cfg, gh, 10, T0)
+    (cfg.data_dir / "decisions.md").write_text("garbage")  # file is not the source of truth
+    approve(store, cfg, "P-ivt-2", True, now=T0)
+    push_decisions(store, cfg, gh, 10, T0)
+    assert "P-ivt-2" in gh.posts[1][1] and "Q-ivt-1" not in gh.posts[1][1]
+
+
+def _append(repo, i):
+    cfg = Config(name="ivt", repo=repo, author="me", gh_user="me", limits={}, reply={})
+    for n in range(15):
+        add_backlog(cfg, "scope", i, f"item {i}-{n}", T0)
+
+
+def test_concurrent_appends_keep_both(cfg, tmp_path):
+    import multiprocessing as mp
+    ps = [mp.get_context("fork").Process(target=_append, args=(tmp_path, i)) for i in (1, 2)]
+    [p.start() for p in ps]
+    [p.join() for p in ps]
+    t = (cfg.data_dir / "backlog.md").read_text()
+    assert t.count("\n- [scope]") == 30
+
+
 def test_add_backlog(cfg):
     add_backlog(cfg, "spec-gap", 589, "thiếu\nmô tả", T0)
     assert "[spec-gap] PR #589" in (cfg.data_dir / "backlog.md").read_text()

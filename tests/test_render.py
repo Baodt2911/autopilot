@@ -46,3 +46,10 @@ def test_plan_truncated_and_state(cfg, tmp_path):
     assert "#589" in (cfg.data_dir / "STATE.md").read_text()
     assert (cfg.data_dir / "pending.md").exists() and (cfg.data_dir / "backlog.md").exists()
     assert "feat/x" in state_md([snap()], s)
+
+
+@pytest.mark.parametrize("body,fc", [("a ~~~~ b ``` c", "~~~~~"), ("x ```` y", "~~~~~"), ("only ``` ticks ```", "~~~~")])
+def test_fence_longer_than_any_run(cfg, body, fc):
+    e = Event("c1", 589, "thread", 4, T0, {"body": body})
+    t = event_file(cfg, {"id": 8, "pr": 589}, [e], snap(), {}).read_text()
+    assert f"\n{fc}text\n{body}\n{fc}\n" in t
