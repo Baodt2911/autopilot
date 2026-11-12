@@ -127,3 +127,7 @@ Allowlist lưu ở kv `allowlist` (danh sách số PR dạng JSON). Chỉ có t�
 ### Kết quả chạy thử
 
 (Controller điền sau khi theo dõi một ngày: số sự kiện, số lô, số mục A/C1/C2/D, số lần owner can thiệp, lỗi gặp phải.)
+
+### Test bằng một tài khoản
+
+Đặt `self_review_prefix = "[review]"` trong file cấu hình của project test. Khi đó comment của chính tác giả PR mà bắt đầu bằng `[review]` được tính như comment của người review. Reply của worker không có tiền tố này nên vẫn được coi là trả lời của tác giả, không tạo vòng lặp. Không đặt tuỳ chọn này cho project thật.

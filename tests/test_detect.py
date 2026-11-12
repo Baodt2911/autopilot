@@ -194,3 +194,16 @@ def test_parent_and_child_merged_same_scan_no_false_warning():
     parent = replace(p_old, state="MERGED")
     child = snap(11, state="MERGED", base_ref="feat-a")
     assert stack_warnings({10: p_old}, {10: parent, 11: child}, [parent, child]) == []
+
+
+def test_self_review_prefix_counts_own_comment_and_own_reply_closes_it():
+    c = replace(cfg(), self_review_prefix="[review]")
+    ask = cm("c1", author=ME, body="[review] average([]) crashes", mins=0)
+    cur = snap(threads=(thread(ask),), comments=(cm("g1", author=ME, body="[review] add a CLI"),
+                                                 cm("g2", author=ME, body="done, thanks")))
+    ids = {e.payload["comment_id"] for e in detect(None, cur, c, NOW)}
+    assert ids == {"c1", "g1"}
+    replied = snap(threads=(thread(ask, cm("c2", author=ME, body="Fixed in abc", mins=5)),))
+    assert detect(None, replied, c, NOW) == []
+    # without the setting the owner's own comments stay ignored
+    assert detect(None, cur, cfg(), NOW) == []

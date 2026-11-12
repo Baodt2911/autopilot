@@ -67,6 +67,8 @@ class Config:
     worker_model: str = "claude-sonnet-5-5"
     spec_branch: str = "main"
     spec_sources: tuple[str, ...] = ()
+    # Test-only: the author's own comments starting with this prefix count as reviewer comments.
+    self_review_prefix: str | None = None
     forbidden: tuple[str, ...] = DEFAULT_FORBIDDEN
     limits: dict = None  # type: ignore[assignment]
     notify: dict = None  # type: ignore[assignment]
@@ -135,7 +137,7 @@ def load_config(name: str, config_dir: Path = DEFAULT_CONFIG_DIR) -> Config:
         "gh_user": data["gh_user"],
     }
     for k in ("transport", "scan_minutes", "debounce_min", "max_workers",
-              "worker_model", "spec_branch"):
+              "worker_model", "spec_branch", "self_review_prefix"):
         if k in data:
             kw[k] = data[k]
     if "spec_sources" in data:

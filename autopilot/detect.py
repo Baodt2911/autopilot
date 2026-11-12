@@ -27,10 +27,18 @@ def _comment_event(c: Comment, pr: int, kind: str, now: datetime, extra: dict) -
                  priority=4, created_at=now, payload=payload)
 
 
-def _pushback(thread: Thread, author: str) -> int:
+def _is_own(c: Comment, cfg: Config) -> bool:
+    """Authored by the PR owner, unless it carries the test-only self-review prefix."""
+    if c.author != cfg.author:
+        return False
+    pre = cfg.self_review_prefix
+    return not (pre and (c.body or "").lstrip().startswith(pre))
+
+
+def _pushback(thread: Thread, cfg: Config) -> int:
     seen_own, count = False, 0
     for c in thread.comments:
-        if c.author == author:
+        if _is_own(c, cfg):
             seen_own = True
         elif seen_own:
             count += 1
@@ -49,14 +57,14 @@ def _all_events(s: PRSnapshot, cfg: Config, now: datetime, base: PRSnapshot | No
     for t in s.threads:
         if t.is_resolved or not t.comments:
             continue
-        own_times = [c.created_at for c in t.comments if c.author == me]
-        pb = _pushback(t, me)
+        own_times = [c.created_at for c in t.comments if _is_own(c, cfg)]
+        pb = _pushback(t, cfg)
         for c in t.comments:
-            if c.author == me or any(ot > c.updated_at for ot in own_times):
+            if _is_own(c, cfg) or any(ot > c.updated_at for ot in own_times):
                 continue
             out.append(_comment_event(c, n, "thread", now, {"thread_id": t.id, "pushback": pb}))
     for c in s.comments:
-        if c.author != me:
+        if not _is_own(c, cfg):
             out.append(_comment_event(c, n, "comment", now, {}))
     latest: dict[str, Review] = {}
     for r in s.reviews:
