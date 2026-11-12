@@ -5,7 +5,7 @@ import re
 from datetime import datetime
 
 from .config import Config
-from .models import Comment, Event, PRSnapshot, Thread
+from .models import Comment, Event, Review, PRSnapshot, Thread
 
 _NOOP_RE = re.compile(r"^[\W_]*(lgtm|approved)[\W_]*$", re.IGNORECASE)
 
@@ -58,10 +58,15 @@ def _all_events(s: PRSnapshot, cfg: Config, now: datetime, base: PRSnapshot | No
     for c in s.comments:
         if c.author != me:
             out.append(_comment_event(c, n, "comment", now, {}))
+    latest: dict[str, Review] = {}
     for r in s.reviews:
+        if r.author not in latest or r.submitted_at >= latest[r.author].submitted_at:
+            latest[r.author] = r
+    for r in latest.values():
         if r.author == me:
             continue
-        noop = is_noop(r.body) or (not r.body.strip() and r.state in ("APPROVED", "COMMENTED"))
+        noop = (is_noop(r.body) or r.state == "DISMISSED"
+                or (not r.body.strip() and r.state in ("APPROVED", "COMMENTED")))
         cr = r.state == "CHANGES_REQUESTED"
         out.append(Event(f"review:{r.id}", n, "noop" if noop and not cr else "review",
                          0 if cr else 4, now,
@@ -70,7 +75,7 @@ def _all_events(s: PRSnapshot, cfg: Config, now: datetime, base: PRSnapshot | No
     if s.mergeable == "CONFLICTING":
         out.append(Event(f"conflict:{n}:{s.head_sha}", n, "conflict", 1, now,
                          {"url": s.url, "head_sha": s.head_sha, "base_ref": s.base_ref}))
-    if base is not None and (base.base_sha != s.base_sha or base.base_ref != s.base_ref):
+    if base is not None and base.base_ref != s.base_ref:
         out.append(Event(f"base:{n}:{s.base_sha}", n, "base", 2, now,
                          {"url": s.url, "old_base_ref": base.base_ref, "base_ref": s.base_ref,
                           "old_base_sha": base.base_sha, "base_sha": s.base_sha}))
@@ -90,6 +95,7 @@ def stack_warnings(prev: dict[int, PRSnapshot], cur: dict[int, PRSnapshot],
                    merged: list[PRSnapshot]) -> list[str]:
     """G15: report (never fix) parent-merged children and out-of-order merges."""
     warnings: list[str] = []
+    merged_nums = {m.number for m in merged}
     for m in merged:
         children = sorted((p for p in cur.values()
                            if p.number != m.number and p.state == "OPEN"
@@ -98,7 +104,7 @@ def stack_warnings(prev: dict[int, PRSnapshot], cur: dict[int, PRSnapshot],
             desc = ", ".join(f"#{c.number} (base hiện tại {c.base_ref}, {c.mergeable})"
                              for c in children)
             warnings.append(f"PR #{m.number} ({m.head_ref}) đã merge; PR con bị ảnh hưởng: {desc}")
-        pool = {**prev, **cur}
+        pool = {k: v for k, v in {**prev, **cur}.items() if k not in merged_nums}
         for p in sorted(pool.values(), key=lambda p: p.number):
             if p.number != m.number and p.state == "OPEN" and p.head_ref == m.base_ref:
                 warnings.append(f"PR #{m.number} đã merge trước PR cha #{p.number} ({p.head_ref}) "

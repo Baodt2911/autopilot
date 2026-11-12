@@ -111,12 +111,11 @@ def test_conflict_event_once_per_head_sha():
     assert run(snap(mergeable="UNKNOWN")) == []
 
 
-def test_base_change_event_on_base_sha_or_ref_change():
+def test_base_change_event_on_ref_change_only():
     prev = snap()
-    evs = run(replace(prev, base_sha="b2"), prev)
+    assert run(replace(prev, base_sha="b2"), prev) == []
+    evs = run(replace(prev, base_ref="dev", base_sha="b2"), prev)
     assert [(e.id, e.kind, e.priority) for e in evs] == [("base:1:b2", "base", 2)]
-    evs = run(replace(prev, base_ref="dev"), prev)
-    assert [e.id for e in evs] == ["base:1:b1"]
     assert run(prev, None) == []  # no baseline -> no base event
 
 
@@ -174,3 +173,24 @@ def test_reviewer_comment_before_author_reply_not_reemitted():
     c1, r1, c3 = cm("C1"), cm("C2", author=ME, mins=5), cm("C3", mins=10)
     evs = run(snap(threads=(thread(c1, r1, c3),)))
     assert [e.id.split("@")[0] for e in evs] == ["C3"]
+
+
+def test_superseded_changes_requested_not_emitted():
+    r1 = Review("R1", "rev", "CHANGES_REQUESTED", T0, "fix", "u1")
+    r2 = Review("R2", "rev", "APPROVED", T0 + timedelta(hours=1), "", "u2")
+    evs = run(snap(reviews=(r1, r2)))
+    assert [e.id for e in evs] == ["review:R2"] and evs[0].kind == "noop"
+    r3 = Review("R3", "other", "CHANGES_REQUESTED", T0, "x", "u3")
+    assert [(e.id, e.priority) for e in run(snap(reviews=(r1, r2, r3)))][-1] == ("review:R3", 0)
+
+
+def test_dismissed_review_is_noop():
+    r = Review("R1", "rev", "DISMISSED", T0, "was wrong", "u")
+    assert [e.kind for e in run(snap(reviews=(r,)))] == ["noop"]
+
+
+def test_parent_and_child_merged_same_scan_no_false_warning():
+    p_old = snap(10, head_ref="feat-a")
+    parent = replace(p_old, state="MERGED")
+    child = snap(11, state="MERGED", base_ref="feat-a")
+    assert stack_warnings({10: p_old}, {10: parent, 11: child}, [parent, child]) == []
