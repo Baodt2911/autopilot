@@ -13,7 +13,7 @@ Owner chỉ trả lời những vấn đề **thực sự ảnh hưởng tới d
 1. Comment mới trên PR được giao tới đúng worktree trong vòng ≤ 15 phút (5 phút quét + 10 phút gom đợt). Owner không phải gõ gì.
 2. Không có câu hỏi nào gửi tới owner mà spec, QA hoặc `decisions.md` đã có đáp án. Mỗi câu C2 ghi rõ đã tra ở đâu.
 3. Một câu owner đã trả lời thì không bao giờ bị hỏi lại, ở bất kỳ worktree nào.
-4. Không mất sự kiện khi session chết, context bị nén, Orca tắt hoặc máy khởi động lại.
+4. Không mất sự kiện khi session chết, context bị nén, tiến trình worker bị giết hoặc máy khởi động lại.
 5. Không tốn token khi không có việc.
 6. Không file nào của autopilot lọt vào commit của dự án.
 
@@ -63,23 +63,25 @@ Owner chỉ trả lời những vấn đề **thực sự ảnh hưởng tới d
 | G14 | **Chỉ đổi base khi owner yêu cầu.** Khi GitHub tự đổi base của PR con, xử lý như G5. |
 | G15 | Router **báo** (không tự sửa) khi: (a) nhánh cha vừa merge, kèm danh sách PR con bị ảnh hưởng, base hiện tại và tình trạng conflict; (b) có PR merge sai thứ tự hoặc vào sai nhánh đích. |
 | G16 | Chỉ owner mới trả lời được C2, duyệt plan B và duyệt nháp "không phải lỗi". Duyệt PR là việc của reviewer (approve rồi merge). Comment của reviewer không bao giờ được tính là duyệt. |
-| G17 | **Bỏ bộ chờ nền và Stop hook của worker** ở giai đoạn 1. Dựa vào việc Orca tự gõ thông báo vào terminal, cộng với ack và gửi lại của router. Chỉ thêm lại nếu chạy thử thấy lỡ tin. |
-| G18 | Worker mở bằng `orca orchestration worker-start --worktree … --agent claude --model <id đầy đủ> --keep-open`. Tin gửi qua `send --to dispatch:<id>`, **không** gõ thẳng vào terminal. Cách cụ thể chốt sau khi test ở bước đầu của plan. |
+| G17 | **Không cần bộ chờ nền hay Stop hook.** Mỗi lần giao việc là một lần chạy tiến trình `claude -p`. Tiến trình kết thúc là xong lượt, có exit code và JSON kết quả. Lượt chưa có `result` thì router chạy lại (owner 2026-11-12, thay cho cách dựa vào Orca gõ thông báo). |
+| G18 | **Transport mặc định là headless.** Lần đầu ở một worktree: `claude -p "<chỉ thị>" --session-id <uuid mới> --model <id đầy đủ> --output-format json`, chạy với thư mục làm việc là worktree đó. Các lần sau: `--resume <uuid>` cùng session đó, nên mỗi worktree vẫn đúng một session cho tới khi PR merge. `uuid` lưu trong `state.db`. Chế độ quyền và danh sách tool cho phép lấy từ `[worker]` trong config. Worker **không được chạy `git push` trực tiếp** (nằm trong danh sách cấm); chỉ push qua `autopilot push <batch>`, lệnh này kiểm tra đúng nhánh PR, không có file `forbidden`, không cần force, rồi mới push. Cờ cụ thể chốt sau spike ở bước đầu của plan. |
 | G19 | Usage limit tính theo **tài khoản**. Phát hiện ở một worker thì **dừng giao việc cho tất cả**, không coi worker là chết, chờ tới giờ reset + 5 phút. Web hiện "Đang chờ reset lúc …". |
 | G20 | QA là tùy chọn. Owner **dán QA từ Google Sheet** trên web (giai đoạn 1: `autopilot qa paste`). Router không truy cập Google. |
 | G21 | DB test của API: chỉ bật khi sửa chạm tới `*.int-spec.ts` liên quan. **Mỗi lần chỉ 1 worker** dùng (router giữ khóa). Xong lô thì tắt. |
-| G22 | Transport thay thế được: `orca` (app hoặc `orca serve`, không cần giao diện) ở giai đoạn 1; `headless` (`claude -p --resume`) ở giai đoạn 3. |
+| G22 | Transport thay thế được bằng một dòng `transport` trong config: `headless` (mặc định, giai đoạn 1) hoặc `orca` (tùy chọn, giai đoạn 3, khi owner muốn thấy worker trong Orca IDE). Mọi tính năng khác không phụ thuộc transport. |
 | G23 | Chạy thử thật trên 1–2 PR ít phụ thuộc nhất. Router đề xuất, owner xác nhận. |
+| G24 | **Không chạy chồng lên session owner đang mở.** Trước mỗi lượt, router kiểm tra có tiến trình `claude` nào khác đang chạy với thư mục làm việc trong worktree đó (đọc `/proc/<pid>/cwd`). Có thì xếp hàng, chờ tới lượt quét sau. Mỗi worktree giữ một khóa `fcntl` trong lúc chạy. |
+| G25 | Owner chạy tay được: `autopilot scan` (toàn bộ), `autopilot scan --pr <n>` (một PR), hoặc `/pr-triage <n>` trong session của worktree. Lệnh skill gọi `autopilot scan --pr <n>` để router tạo lô trước, nên vẫn ghi DB, hiện trên web và không xử lý trùng. |
 
 ## 3. Kiến trúc
 
 ```
 systemd user timer (5') ─► autopilot router (Python, 0 token)
                             ├─ quét GitHub (gh): comment, review, merge, conflict, CI, base đổi
-                            ├─ quét Orca: worker sống / chết / đứng im / hết limit
+                            ├─ theo dõi tiến trình worker: đang chạy / lỗi / đứng im / hết limit
                             ├─ chống trùng, gom đợt, xếp hàng ưu tiên, giới hạn G9
                             ├─ định tuyến PR → nhánh → worktree → session
-                            ├─ ghi events/*.md, gửi tin trỏ tới file (transport)
+                            ├─ ghi events/*.md, chạy lượt worker trỏ tới file (transport headless)
                             └─ thông báo desktop theo khung giờ G11
                                          │
                                          ▼
@@ -119,7 +121,7 @@ systemd user timer (5') ─► autopilot router (Python, 0 token)
 repo           = "~/Projects/MHT/iviettien"
 author         = "vyn-bao-do"
 gh_user        = "vyn-bao-do"   # router luôn dùng token của đúng tài khoản này (mục 13)
-transport      = "orca"
+transport      = "headless"   # hoặc "orca" (giai đoạn 3)
 scan_minutes   = 5
 debounce_min   = 10
 max_workers    = 5
@@ -197,35 +199,37 @@ cancelled:  PR đóng hoặc merge giữa chừng
 
 ### 4.3 Định tuyến
 
-- Chuỗi tra cứu: PR → `headRefName` → worktree (khớp `git worktree list` với `orca worktree ps`) → session của worktree đó.
-- Có session: gửi qua transport. Nội dung chỉ là đường dẫn tới file sự kiện.
-- Chưa có session và đang dưới `max_workers` worker chạy: mở worker ở **đúng worktree đó** (G18). Đã đủ thì xếp hàng.
+- Chuỗi tra cứu: PR → `headRefName` → worktree (theo `git worktree list`) → `session_id` của worktree đó trong `state.db`.
+- Có session: chạy một lượt `--resume` (G18, G24). Chỉ thị chỉ là đường dẫn tới file sự kiện.
+- Chưa có session: tạo session mới ở **đúng worktree đó** (G18).
+- Đang có `max_workers` tiến trình worker chạy: xếp hàng.
 - Ưu tiên: `CHANGES_REQUESTED` > conflict > base đổi > CI fail > comment thường.
 - PR không có worktree local: báo sự cố, không tự tạo worktree.
 
 ### 4.4 Theo dõi worker
 
 - Nguồn dữ liệu:
-  - `orca worktree ps --agent-wait --json`: `state`, `programStatus.state`, `hasLivePty`, `lastAssistantMessage`, `updatedAt`;
-  - `orca terminal read`;
-  - `orca orchestration worker-list`.
-- **Chết**: mở lại ở cùng worktree, giao lại sự kiện chưa xong. Chết 2 lần thì báo sự cố.
-- **Đứng im** 60 phút mà còn sự kiện: nhắc một lần, sau đó báo sự cố.
-- **Hết limit** (G19): phát hiện dòng "hit your … limit · resets HH:MM" trong output hoặc transcript, rồi dừng giao việc cho tất cả tới giờ reset + 5 phút.
-- **PR merge**: cập nhật `STATE.md`, đóng session của worktree, rồi kiểm tra G15.
+  - pid, exit code và JSON kết quả của tiến trình `claude -p` (router lưu trong `state.db`);
+  - thời điểm sửa cuối của transcript `~/.claude/projects/<thư mục>/<session_id>.jsonl`;
+  - các lệnh `autopilot ack`, `item`, `result` worker gọi trong lượt.
+- **Lỗi**: tiến trình thoát mà lô chưa có `result` thì chạy lại `--resume` ở lượt quét sau. Lỗi 2 lần liên tiếp thì báo sự cố.
+- **Đứng im**: tiến trình còn chạy nhưng transcript không đổi 60 phút. Báo owner một lần. Sau 30 phút nữa thì dừng tiến trình, giữ session, báo sự cố.
+- **Hết limit** (G19): phát hiện dòng "hit your … limit · resets HH:MM" trong JSON kết quả, stderr hoặc transcript, rồi dừng giao việc cho tất cả tới giờ reset + 5 phút. Session giữ nguyên, lượt sau `--resume` tiếp.
+- **PR merge**: cập nhật `STATE.md`, đánh dấu session của worktree là đã đóng (không `--resume` nữa), rồi kiểm tra G15.
 
 ### 4.5 Transport
 
 Giao diện chung: `deliver(event)`, `start_worker(worktree)`, `status(worktree)`, `stop_worker(worktree)`.
 
-- `orca` (giai đoạn 1): như G18. Cần app Orca hoặc `orca serve`.
-- `headless` (giai đoạn 3): `claude -p --resume <session-id>` chạy trong worktree, mỗi sự kiện một lượt.
+- `headless` (mặc định, giai đoạn 1): như G18 và G24. Mỗi lô một lượt. Không cần Orca.
+  - `start_worker` = lượt đầu với `--session-id`; `deliver` = lượt `--resume`; `status` = theo 4.4; `stop_worker` = dừng tiến trình đang chạy, giữ session.
+- `orca` (tùy chọn, giai đoạn 3): `orca orchestration worker-start --worktree … --agent claude --model <id> --keep-open`, gửi tin qua `send --to dispatch:<id>`. Cần app Orca hoặc `orca serve`.
 
 ## 5. Worker: skill `/pr-triage`
 
 ### 5.1 Khi được đánh thức
 
-1. Đọc file sự kiện, ghi ack.
+1. Đọc file sự kiện, ghi ack. Khi owner gọi tay `/pr-triage <n>`: chạy `autopilot scan --pr <n>` trước, rồi làm lô router vừa tạo (G25).
 2. Đọc `decisions.md`.
 3. `git fetch`, kiểm tra nhánh khớp remote.
 4. Chỉ làm trong phạm vi PR này.
@@ -333,7 +337,8 @@ autopilot scan [--dry-run]   autopilot pause|resume [PR]   autopilot qa paste   
 |---|---|
 | GitHub hoặc mạng lỗi, bị rate limit | Bỏ qua lượt này, thử lại với thời gian chờ tăng dần. Lỗi liên tục 30 phút thì báo |
 | `gh` hết phiên đăng nhập | Báo ngay kèm lệnh cần chạy. Router tạm dừng |
-| Transport lỗi | Sự kiện ở trạng thái `delivered`, chưa ack thì gửi lại. Thất bại 3 lần thì báo |
+| Lượt worker lỗi (thoát khác 0, không có `result`) | Chạy lại `--resume` ở lượt quét sau. Thất bại 2 lần liên tiếp thì báo |
+| `claude` hết phiên đăng nhập | Báo ngay kèm lệnh cần chạy. Router tạm dừng giao việc |
 | Worker chết, đứng im, hết limit | Theo 4.4 và G19 |
 | Đủ 5 worker | Xếp hàng theo 4.3 |
 | Comment mới tới khi worker đang làm lô khác | Đưa vào lô sau |
@@ -351,25 +356,26 @@ autopilot scan [--dry-run]   autopilot pause|resume [PR]   autopilot qa paste   
 
 ## 11. Test và triển khai
 
-1. **Spike transport**:
-   - kiểm tra `worker-start` ở worktree có sẵn;
-   - `send --to dispatch:` tới session đang rảnh và đang bận;
-   - `orca serve` khi không mở app;
-   - phát hiện usage limit.
-   Kết quả quyết định G17 và G18.
+1. **Spike transport headless** (trong worktree thử của repo autopilot, không đụng Orca hay iviettien):
+   - lượt đầu với `--session-id`, lượt sau `--resume` có giữ đúng session và nhớ ngữ cảnh không;
+   - JSON kết quả gồm những trường gì (`session_id`, `is_error`, `result`, chi phí);
+   - chế độ quyền nào cho phép worker sửa file, chạy test, commit mà không bị kẹt chờ duyệt;
+   - phát hiện tiến trình `claude` đang mở trong worktree (G24);
+   - lỗi hết usage limit hiện ra ở đâu.
+   Kết quả chốt cờ cho G18.
 2. **Unit test router**: lọc, chống trùng, gom đợt, định tuyến, vòng trạng thái, gửi lại, giới hạn G9, G15.
 3. **Dry-run** trên các PR thật.
 4. **Đánh giá triage** ở chế độ chỉ đọc, trên PR cũ (ví dụ `docs/handoff/pr-579-580-triage.md`), theo tiêu chí G10.
-5. **Diễn tập sự cố**: giết worker, tắt Orca, giả lập hết limit, stage một ảnh, phản bác lần 2, vượt giới hạn.
+5. **Diễn tập sự cố**: giết tiến trình worker giữa lượt, mở session tay khi router muốn giao việc, giả lập hết limit, stage một ảnh, phản bác lần 2, vượt giới hạn.
 6. **Chạy thử thật** theo G23, rồi mở rộng.
 
 ## 12. Các giai đoạn
 
 | Giai đoạn | Nội dung |
 |---|---|
-| 1 | Router, CLI, `state.db`, `/pr-triage`, transport `orca`, thông báo, systemd. Test bước 1–6 |
+| 1 | Router, CLI, `state.db`, `/pr-triage`, transport `headless`, thông báo, systemd. Test bước 1–6 |
 | 2 | Dashboard web, gồm phần cài đặt và dán QA |
-| 3 | Transport `headless`. Thêm dự án thứ hai bằng một file `.toml` |
+| 3 | Transport `orca` (tùy chọn). Thêm dự án thứ hai bằng một file `.toml` |
 
 Owner (2026-11-12): **một plan triển khai bao gồm cả giai đoạn 1 và 2**. Web được làm ngay sau khi router chạy đúng, và phải xong trước khi chạy thử thật (mục 11, bước 6), để owner theo dõi trực quan trên web ngay từ lần chạy thật đầu tiên.
 
@@ -385,7 +391,8 @@ Owner (2026-11-12): **một plan triển khai bao gồm cả giai đoạn 1 và 
 
 ## 14. Còn cần kiểm chứng (ở bước 1 của plan)
 
-1. `--model` có nhận tên viết tắt hay phải dùng id đầy đủ.
-2. Tin gửi qua `send --to dispatch:<id>` có tới được session mở bằng `--keep-open` lúc đang rảnh và lúc đang bận không.
-3. `orca serve` có hỗ trợ terminal và agent như app đầy đủ không.
-4. Dòng báo usage limit có xuất hiện trong `lastAssistantMessage` hoặc `terminal read` không.
+1. `--resume <uuid>` ở chế độ `-p` có tiếp đúng session tạo bằng `--session-id` và giữ ngữ cảnh không.
+2. Các trường trong `--output-format json` và cách nhận biết lượt lỗi.
+3. Chế độ quyền và `--allowedTools` phù hợp để worker tự sửa, test, commit, push mà không kẹt chờ duyệt, nhưng vẫn chặn lệnh nguy hiểm.
+4. Dòng báo usage limit xuất hiện ở JSON, stderr hay chỉ trong transcript.
+5. Đọc `/proc/<pid>/cwd` có nhận ra session owner đang mở trong worktree (kể cả session mở trong Orca) không.
