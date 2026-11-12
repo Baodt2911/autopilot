@@ -110,3 +110,72 @@ def test_notify_send_uses_list_args(monkeypatch):
     notify_send("T", "B")
     assert calls[0][0][0] == ["notify-send", "-a", "autopilot", "T", "B"]
     assert not calls[0][1].get("shell")
+
+
+def _enq(args):
+    path, n = args
+    cfg = Config(name="t", repo=path.parent, author="me", gh_user="me",
+                 notify={"hours": "07:00-22:00", "remind_after_h": 4, "digest_at": "08:00"})
+    nf = Notifier(cfg, Store(path), send=lambda t, b: None)
+    for i in range(25):
+        nf.alert("plan", f"{n}-{i}", "b", at(23))
+    return True
+
+
+def test_concurrent_enqueue_keeps_all(tmp_path):
+    import multiprocessing as mp
+
+    path = tmp_path / "c.db"
+    Store(path)
+    with mp.get_context("spawn").Pool(4) as pool:
+        assert all(pool.map(_enq, [(path, n) for n in range(4)]))
+    assert len(json.loads(Store(path).kv_get("digest_queue"))) == 100
+
+
+def test_digest_sent_once_under_race(env):
+    cfg, store, sent, n = env
+    n2 = Notifier(cfg, store, send=lambda t, b: sent.append((t, b)))
+    assert n.digest(at(9), "s") is True
+    assert n2.digest(at(9), "s") is False
+    assert len(sent) == 1
+
+
+def test_digest_failure_unclaims_and_restores(env):
+    cfg, store, sent, n = env
+    n.alert("incident", "x", "b", at(23))
+    bad = Notifier(cfg, store, send=lambda t, b: (_ for _ in ()).throw(OSError("no display")))
+    assert bad.digest(at(9), "s") is False
+    assert len(json.loads(store.kv_get("digest_queue"))) == 1
+    assert n.digest(at(9, 5), "s") is True
+
+
+def test_queue_capped_with_dropped_count(env):
+    _, store, sent, n = env
+    for i in range(205):
+        n.alert("plan", f"t{i}", "b", at(23))
+    assert n.digest(at(9), "s") is True
+    body = sent[-1][1]
+    assert "và 5 thông báo khác" in body and "t204" in body and "t4:" not in body
+
+
+def test_failed_reminder_not_marked(env):
+    cfg, store, _, _ = env
+    c = store.add_item("Q", 1, 1, "t", "b", at(8))
+
+    def boom(t, b):
+        raise OSError("x")
+
+    assert Notifier(cfg, store, send=boom).reminders(at(13)) == 0
+    assert store.item(c)["reminded_at"] is None
+
+
+def test_notify_send_nonzero_is_failure(monkeypatch):
+    import subprocess
+
+    def run(cmd, **k):
+        if k.get("check"):
+            raise subprocess.CalledProcessError(1, cmd)
+
+    monkeypatch.setattr("autopilot.notify.subprocess.run", run)
+    with pytest.raises(subprocess.CalledProcessError):
+        notify_send("T", "B")

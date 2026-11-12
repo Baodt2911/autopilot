@@ -7,11 +7,12 @@ from datetime import datetime, time
 from typing import Callable
 
 KINDS = ("question", "plan", "draft", "incident", "stack")
+MAX_QUEUE = 200
 TITLE_PREFIX = "Autopilot: cần chú ý"
 
 
 def notify_send(title: str, body: str) -> None:
-    subprocess.run(["notify-send", "-a", "autopilot", title, body], check=False, timeout=10)
+    subprocess.run(["notify-send", "-a", "autopilot", title, body], check=True, timeout=10)
 
 
 def _local(now: datetime) -> datetime:
@@ -44,17 +45,35 @@ class Notifier:
                 pass
             return False
 
-    def _queue(self) -> list[dict]:
+    @staticmethod
+    def _parse(raw: str | None) -> list[dict]:
         try:
-            q = json.loads(self.store.kv_get("digest_queue") or "[]")
+            q = json.loads(raw or "[]")
             return q if isinstance(q, list) else []
         except ValueError:
             return []
 
+    @staticmethod
+    def _push(q: list[dict], new: list[dict]) -> list[dict]:
+        """Append, keep at most MAX_QUEUE real entries; dropped ones are counted in a leading marker."""
+        dropped = sum(i.get("n", 0) for i in q if i.get("kind") == "_dropped")
+        items = [i for i in q if i.get("kind") != "_dropped"] + new
+        if len(items) > MAX_QUEUE:
+            dropped += len(items) - MAX_QUEUE
+            items = items[-MAX_QUEUE:]
+        return ([{"kind": "_dropped", "n": dropped}] if dropped else []) + items
+
     def _enqueue(self, kind: str, title: str, body: str, now: datetime) -> None:
-        q = self._queue()
-        q.append({"kind": kind, "title": title, "body": body, "at": now.isoformat()})
-        self.store.kv_set("digest_queue", json.dumps(q, ensure_ascii=False))
+        entry = {"kind": kind, "title": title, "body": body, "at": now.isoformat()}
+        self.store.kv_update(
+            "digest_queue", lambda cur: json.dumps(self._push(self._parse(cur), [entry]), ensure_ascii=False)
+        )
+
+    def _restore(self, taken: list[dict]) -> None:
+        self.store.kv_update(
+            "digest_queue",
+            lambda cur: json.dumps(self._push(taken, [i for i in self._parse(cur)]), ensure_ascii=False),
+        )
 
     # ---- API ----
     def alert(self, kind: str, title: str, body: str, now: datetime) -> bool:
@@ -81,12 +100,30 @@ class Notifier:
         if not self._in_window(now) or loc.time().replace(second=0, microsecond=0) < _hm(self.cfg.notify["digest_at"]):
             return False
         today = loc.date().isoformat()
-        if self.store.kv_get("last_digest") == today:
-            return False
-        q = self._queue()
-        lines = [summary] + [f"- [{i['kind']}] {i['title']}: {i['body']}" for i in q]
-        if not self._deliver("Autopilot: tóm tắt buổi sáng", "\n".join(lines), now):
-            return False
-        self.store.kv_set("last_digest", today)
-        self.store.kv_set("digest_queue", "[]")
-        return True
+        claim: dict = {}
+
+        def claim_fn(cur):
+            if cur == today:
+                return cur
+            claim["prev"] = cur
+            return today
+
+        self.store.kv_update("last_digest", claim_fn)
+        if "prev" not in claim:
+            return False  # already sent (or being sent) today
+        taken: list[dict] = []
+
+        def take(cur):
+            taken.extend(self._parse(cur))
+            return "[]"
+
+        self.store.kv_update("digest_queue", take)
+        dropped = sum(i.get("n", 0) for i in taken if i.get("kind") == "_dropped")
+        lines = [summary] + [f"- [{i['kind']}] {i['title']}: {i['body']}" for i in taken if i.get("kind") != "_dropped"]
+        if dropped:
+            lines.append(f"… và {dropped} thông báo khác")
+        if self._deliver("Autopilot: tóm tắt buổi sáng", "\n".join(lines), now):
+            return True
+        self.store.kv_update("last_digest", lambda cur: claim["prev"] if cur == today else cur)
+        self._restore(taken)
+        return False

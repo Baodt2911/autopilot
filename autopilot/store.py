@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections.abc import Callable
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -306,6 +307,23 @@ class Store:
                 )
 
         self._tx(f)
+
+    def kv_update(self, key: str, fn: Callable[[str | None], str | None]) -> str | None:
+        """Atomic read-modify-write of one kv key (BEGIN IMMEDIATE). fn returning None deletes the key."""
+
+        def f(db):
+            r = db.execute("SELECT value FROM kv WHERE key=?", (key,)).fetchone()
+            new = fn(r[0] if r else None)
+            if new is None:
+                db.execute("DELETE FROM kv WHERE key=?", (key,))
+            else:
+                db.execute(
+                    "INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                    (key, new),
+                )
+            return new
+
+        return self._tx(f)
 
     # ---- locks ----
     def acquire(self, lock: str, holder: str, now: datetime, ttl_min: int = 60) -> bool:
