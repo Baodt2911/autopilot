@@ -291,6 +291,9 @@ class Store:
     def bump_wake(self, pr: int, day: date) -> int:
         return self._bump(f"wake:{pr}:{day.isoformat()}")
 
+    def reset_wake(self, pr: int, day: date) -> None:
+        self._tx(lambda db: db.execute("DELETE FROM counters WHERE name=?", (f"wake:{pr}:{day.isoformat()}",)))
+
     # ---- kv ----
     def kv_get(self, key: str) -> str | None:
         r = self._db.execute("SELECT value FROM kv WHERE key=?", (key,)).fetchone()

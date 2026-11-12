@@ -17,8 +17,12 @@ def _in_flight(store: Store, pr: int) -> bool:
     return any(b["status"] not in _TERMINAL for b in store.batches(pr=pr))
 
 
-def ready_batches(store: Store, cfg: Config, now: datetime) -> list[int]:
-    """Group `new` events per PR into batches once debounced (or a review was submitted)."""
+def ready_batches(store: Store, cfg: Config, now: datetime, *, skip_prs: frozenset[int] | set[int] = frozenset(),
+                  only_prs: set[int] | None = None, force: bool = False) -> list[int]:
+    """Group `new` events per PR into batches once debounced (or a review was submitted).
+
+    skip_prs: PRs left untouched (paused). only_prs: restrict to these PRs. force: ignore the debounce.
+    """
     debounce = timedelta(minutes=cfg.debounce_min)
     by_pr: dict[int, list[Event]] = {}
     noops: list[str] = []
@@ -31,10 +35,12 @@ def ready_batches(store: Store, cfg: Config, now: datetime) -> list[int]:
         store.mark_events(noops, "noop")
     created: list[int] = []
     for pr, evs in sorted(by_pr.items()):
+        if pr in skip_prs or (only_prs is not None and pr not in only_prs):
+            continue
         if _in_flight(store, pr):
             continue
         has_review = any(e.kind == "review" for e in evs)
-        if not has_review and max(e.created_at for e in evs) > now - debounce:
+        if not force and not has_review and max(e.created_at for e in evs) > now - debounce:
             continue
         ordered = sorted(evs, key=lambda e: e.priority)  # stable: keeps arrival order within a priority
         ids = [e.id for e in ordered]
