@@ -96,7 +96,9 @@ function renderOverview(o) {
   state.overview = o;
   const rs = $("router-state");
   let txt = "Đang chạy", tone = "ok";
-  if (o.paused) { txt = "Đang tạm dừng"; tone = "warn"; }
+  const al = o.allowlist || [];
+  if (o.paused && al.length) { txt = `Chạy thử: ${al.map((n) => "#" + n).join(", ")}`; tone = "warn"; }
+  else if (o.paused) { txt = "Đang tạm dừng"; tone = "warn"; }
   else if (o.limit_until) { txt = `Đang chờ reset lúc ${fmtTime(o.limit_until)}`; tone = "bad"; }
   rs.textContent = txt; rs.className = `badge ${tone}`;
   const s = $("slots"); s.textContent = `Slot ${o.slots.working}/${o.slots.max}`;

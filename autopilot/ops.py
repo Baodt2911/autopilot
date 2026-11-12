@@ -1,6 +1,7 @@
 """Owner operations shared by the CLI and the web API (no I/O formatting here)."""
 from __future__ import annotations
 
+import json
 import re
 from datetime import date
 
@@ -12,11 +13,24 @@ QA_MAX_BYTES = 1_000_000
 _QA_NAME = re.compile(r"[a-z0-9_-]{1,64}")
 
 
+def get_allowlist(store: Store) -> list[int]:
+    try:
+        return sorted({int(n) for n in json.loads(store.kv_get("allowlist") or "[]")})
+    except (ValueError, TypeError):
+        return []
+
+
+def _set_allowlist(store: Store, nums) -> None:
+    nums = sorted(set(nums))
+    store.kv_set("allowlist", json.dumps(nums) if nums else None)
+
+
 def pause(store: Store, pr: int | None) -> None:
     if pr is None:
         store.kv_set("paused", "1")
     else:
         store.kv_set(f"paused_pr:{pr}", "owner")
+        _set_allowlist(store, set(get_allowlist(store)) - {pr})
 
 
 def resume(store: Store, pr: int | None, today: date) -> int:
@@ -24,7 +38,10 @@ def resume(store: Store, pr: int | None, today: date) -> int:
     if pr is None:
         store.kv_set("paused", None)
         store.kv_set("auth_alerted", None)
+        store.kv_set("allowlist", None)  # full rollout
         return 0
+    if store.kv_get("paused"):  # pilot mode: only allowlisted PRs run
+        _set_allowlist(store, {*get_allowlist(store), pr})
     by_cap = store.kv_get(f"paused_pr:{pr}") == "limit"
     store.kv_set(f"paused_pr:{pr}", None)
     if not by_cap:

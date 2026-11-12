@@ -107,6 +107,8 @@ def cmd_status(args) -> int:
     paused = store.kv_get("paused")
     print(f"Dự án: {cfg.name}")
     print(f"Tạm dừng toàn bộ: {'có (' + paused + ')' if paused else 'không'}")
+    if paused and ops.get_allowlist(store):
+        print(f"Chạy thử (allowlist): {_al(store)}")
     print(f"PR theo dõi: {sum(1 for d in store.snapshots().values() if d['state'] == 'OPEN')}")
     print(f"Việc chờ owner: {len(store.open_items())}")
     print("Lô: " + (", ".join(f"{k}={v}" for k, v in sorted(counts.items())) or "không có"))
@@ -242,6 +244,25 @@ def _scan_all(args) -> int:
     return rc
 
 
+def _suggest_pilot(args) -> int:
+    cfg, _ = _ctx(args)
+    try:
+        prs = _github(cfg).open_prs()
+        wts = router.list_worktrees(cfg.repo)
+    except Exception as e:
+        return _err(f"Không đọc được dữ liệu: {e}")
+    picks = router.suggest_pilot(cfg, prs, wts)
+    if not picks:
+        print("Không có PR nào đủ an toàn để chạy thử (cần worktree cục bộ, không conflict, không có PR con).")
+        return 0
+    print("[dry-run] PR đề xuất chạy thử (an toàn nhất trước):")
+    for p, reasons in picks:
+        print(f"  #{p.number} {p.title} ({p.head_ref}): {'; '.join(reasons)}")
+    nums = " ".join(f"autopilot resume {p.number}" for p, _ in picks)
+    print(f"Bật chạy thử: autopilot pause, rồi {nums}")
+    return 0
+
+
 def cmd_scan(args) -> int:
     if args.all:
         return _scan_all(args)
@@ -253,6 +274,11 @@ def cmd_scan(args) -> int:
             print("--export-events cần --dry-run, --pr N và --out DIR (không dùng với --claim).", file=sys.stderr)
             return 2
         return _export_events(args)
+    if args.suggest_pilot:
+        if not args.dry_run or args.claim:
+            print("--suggest-pilot cần --dry-run (chỉ đọc, không dùng với --claim).", file=sys.stderr)
+            return 2
+        return _suggest_pilot(args)
     if args.claim and args.pr is None:
         return _err("--claim cần đi kèm --pr N.")
     if args.claim and args.dry_run:
@@ -286,13 +312,17 @@ def cmd_scan(args) -> int:
     return 0
 
 
+def _al(store) -> str:
+    return ", ".join(f"#{n}" for n in ops.get_allowlist(store)) or "(trống)"
+
+
 def cmd_pause(args) -> int:
     _, store = _ctx(args)
     ops.pause(store, args.pr)
     if args.pr is None:
         print("Đã tạm dừng router: vẫn quét và gom sự kiện, nhưng không giao việc cho worker.")
     else:
-        print(f"Đã tạm dừng PR #{args.pr}.")
+        print(f"Đã tạm dừng PR #{args.pr}." + (f" Allowlist còn: {_al(store)}." if ops.get_allowlist(store) else ""))
     return 0
 
 
@@ -300,7 +330,10 @@ def cmd_resume(args) -> int:
     _, store = _ctx(args)
     n = ops.resume(store, args.pr, _now().date())
     if args.pr is None:
-        print("Đã tiếp tục router.")
+        print("Đã tiếp tục router (xóa allowlist chạy thử: mọi PR đều chạy).")
+    elif store.kv_get("paused"):
+        print(f"Đã thêm PR #{args.pr} vào allowlist. Router đang tạm dừng: chỉ các PR trong allowlist "
+              f"({_al(store)}) được giao việc, các PR khác vẫn tạm dừng.")
     else:
         print(f"Đã tiếp tục PR #{args.pr}." + (f" Đưa lại {n} sự kiện vào hàng đợi." if n else ""))
     return 0
@@ -668,6 +701,8 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--all", action="store_true", help="quét mọi dự án trong thư mục cấu hình (dùng cho systemd)")
     sp.add_argument("--pr", type=int)
     sp.add_argument("--claim", action="store_true")
+    sp.add_argument("--suggest-pilot", action="store_true",
+                    help="với --dry-run: đề xuất 1-2 PR an toàn nhất để chạy thử (chỉ đọc)")
     sp.add_argument("--export-events", action="store_true")
     sp.add_argument("--out")
     sp.add_argument("--rewind", action="store_true",

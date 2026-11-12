@@ -276,3 +276,36 @@ def test_scan_records_slots_working(env):
     env.t.states["feat/x"] = WorkerStatus("working", "s", T0)
     env.scan(T0 + 10 * M)
     assert env.store.kv_get("slots_working") == "1" and env.store.kv_get("slots_at")
+
+
+def test_suggest_pilot_prefers_leaf_prs_without_conflict(env):
+    from autopilot.models import Worktree
+    env.wts.update({b: Worktree(b, f"/wt/{b}") for b in ("a", "b", "c", "d", "e", "f")})
+    env.gh.open = [
+        snap(1, head="a", changed=("x.py", "y.py", "z.py")),            # leaf, 3 files
+        snap(2, head="b", changed=("x.py",)),                           # leaf, 1 file -> first
+        snap(3, head="c", changed=("x.py",), mergeable="CONFLICTING"),  # conflict
+        snap(4, head="d", changed=("x.py",)),                           # has child (5)
+        snap(5, head="e", base="d", changed=("x.py", "y.py")),          # leaf, 2 files -> second
+        snap(6, head="nowt", changed=("x.py",)),                        # no worktree
+        snap(7, head="f", changed=("a.png",)),                           # forbidden file
+    ]
+    picks = router.suggest_pilot(env.cfg, env.gh.open_prs(), env.wts)
+    assert [p.number for p, _ in picks] == [2, 5]
+    assert all(reasons for _, reasons in picks)
+
+
+def test_allowlist_limits_routing(env):
+    from autopilot.models import Worktree
+    env.wts["feat/y"] = Worktree("feat/y", "/wt/y")
+    env.gh.open = [snap(581, comments=[comment(body="fix")]),
+                   snap(582, head="feat/y", comments=[comment("c2", body="fix too")])]
+    env.scan(T0)
+    env.store.kv_set("paused", "1")
+    env.store.kv_set("allowlist", "[582]")
+    env.scan(T0 + 10 * M)
+    assert env.t.launches() == [("start", "feat/y", 1)]
+    assert [b for b in env.store.batches() if b["pr"] == 581] == []  # 581 skipped like a paused PR
+    env.store.kv_set("allowlist", None)  # globally paused, empty allowlist: nothing runs
+    env.scan(T0 + 20 * M)
+    assert len(env.t.launches()) == 1

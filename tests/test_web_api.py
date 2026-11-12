@@ -104,7 +104,7 @@ def test_qa_paste_writes_file_under_qa_dir(env):
 def test_overview_shapes(env):
     st, o, _ = call(env, "/api/overview")
     assert st == 200
-    assert o == {"paused": False, "paused_prs": [], "limit_until": None, "slots": {"working": 0, "max": 5},
+    assert o == {"paused": False, "paused_prs": [], "allowlist": [], "limit_until": None, "slots": {"working": 0, "max": 5},
                  "open_items": 1, "incidents_24h": 0}
     call(env, "/api/pause", "POST", {})
     assert call(env, "/api/overview")[1]["paused"] is True

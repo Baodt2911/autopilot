@@ -304,6 +304,10 @@ def _scan(cfg, store, gh, transport, notifier, now, report, dry_run, only_pr, cl
 
     prs = {p.number: p for p in prs_open}
     paused_prs = {n for n in open_nums if store.kv_get(f"paused_pr:{n}")}
+    allow = set(ops.get_allowlist(store))
+    pilot = bool(store.kv_get("paused")) and bool(allow)  # allowlist mode: only chosen PRs run
+    if pilot:
+        paused_prs |= open_nums - allow
     limit = limit_active(store, now)
     if rw and not limit and store.kv_get("limit_until"):
         store.kv_set("limit_until", None)
@@ -370,7 +374,7 @@ def _scan(cfg, store, gh, transport, notifier, now, report, dry_run, only_pr, cl
         cands.append({**b, "priority": min((e.priority for e in evs), default=4),
                       "created_at": min((e.created_at for e in evs), default=now)})
     workers = {br: transport.status(w, now) for br, w in worktrees.items()}
-    paused = bool(store.kv_get("paused")) or bool(limit)
+    paused = (bool(store.kv_get("paused")) and not pilot) or bool(limit)
     for a in route(cands, prs, worktrees, workers, cfg, paused=paused, paused_prs=paused_prs):
         if isinstance(a, (Deliver, Start)) and a.worktree.branch in touched:
             a = Queue(a.batch_id, "busy")
@@ -398,6 +402,22 @@ def _scan(cfg, store, gh, transport, notifier, now, report, dry_run, only_pr, cl
         ops.record_slots(store, transport, worktrees, now)
 
     return _finish(cfg, store, notifier, now, report, prs_open, closed, rw)
+
+
+def suggest_pilot(cfg: Config, open_prs: list[PRSnapshot], worktrees: dict[str, Worktree],
+                  top: int = 2) -> list[tuple[PRSnapshot, list[str]]]:
+    """Read-only ranking of the safest PRs to pilot: (snapshot, Vietnamese reasons)."""
+    bases = {p.base_ref for p in open_prs}
+    ranked = []
+    for p in open_prs:
+        if p.state != "OPEN" or p.head_ref not in worktrees or p.mergeable == "CONFLICTING":
+            continue
+        if p.head_ref in bases or any(is_forbidden(f, cfg.forbidden) for f in p.changed_files):
+            continue
+        ranked.append(p)
+    ranked.sort(key=lambda p: (len(p.changed_files), p.number))
+    return [(p, ["có worktree cục bộ", "không có PR con", "không conflict", "không có file bị cấm",
+                 f"{len(p.changed_files)} file thay đổi"]) for p in ranked[:top]]
 
 
 def _health(store, transport, notifier, now, report, worktrees, touched) -> None:

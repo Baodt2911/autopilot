@@ -119,7 +119,8 @@ def api_overview(ctx, cfg, store, q):
                  if t["kind"] in INCIDENT_KINDS and t["at"] >= since]
     snaps = store.snapshots()
     paused_prs = sorted(n for n, d in snaps.items() if d.get("state") == "OPEN" and store.kv_get(f"paused_pr:{n}"))
-    return {"paused": bool(store.kv_get("paused")), "paused_prs": paused_prs, "limit_until": _iso(lim),
+    return {"paused": bool(store.kv_get("paused")), "paused_prs": paused_prs, "allowlist": ops.get_allowlist(store),
+            "limit_until": _iso(lim),
             "slots": {"working": _slots_working(ctx, cfg, store), "max": cfg.max_workers},
             "open_items": len(store.open_items()), "incidents_24h": len(incidents)}
 

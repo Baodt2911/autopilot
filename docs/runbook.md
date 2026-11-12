@@ -99,3 +99,31 @@ Diễn tập ngày 2026-11-12 trên một worktree thử của repo autopilot (�
 
 - Lưu ý A (lỗi spawn không leo thang): router đếm `spawn_fail:<lô>` trong kv; sau 3 lần spawn lỗi liên tiếp lô thành `escalated` kèm đúng MỘT alert, không thử lại nữa. Chạy lại drill 2: lượt 1-2 lô ở `new` (alert "không giao được" một lần), lượt 3 `escalated` + alert "bị escalate", lượt 4 không làm gì. Store cho phép `new`/`queued` -> `escalated`.
 - Lưu ý B (owner_busy khi chưa có session): `status` kiểm tra tiến trình `claude` lạ trong worktree TRƯỚC khi trả `none`. Chạy lại drill 7 với worktree chưa từng dùng: lô `xếp hàng (owner_session)`, 0 lần gọi claude; đóng session của owner thì lượt sau `mở worker mới` bình thường.
+
+## 6. Chạy thử (pilot)
+
+Chỉ cho một vài PR được giao việc, mọi PR khác giữ tạm dừng (vẫn quét, ghi sự kiện, hiển thị).
+
+```bash
+# 1. Đề xuất 1-2 PR an toàn nhất (chỉ đọc): có worktree, không conflict, không PR con, ít file nhất, không file cấm
+autopilot scan --dry-run --suggest-pilot --project ivt
+
+# 2. Tạm dừng toàn bộ, rồi bật từng PR thử (resume <PR> khi đang tạm dừng = thêm vào allowlist)
+autopilot pause --project ivt
+autopilot resume 581 --project ivt
+autopilot resume 589 --project ivt
+
+# Gỡ một PR khỏi allowlist
+autopilot pause 589 --project ivt
+
+# 3. Theo dõi trên dashboard: thanh trên cùng hiện "Chạy thử: #581, #589"
+
+# 4. Mở rộng toàn bộ (xóa allowlist và bỏ tạm dừng)
+autopilot resume --project ivt
+```
+
+Allowlist lưu ở kv `allowlist` (danh sách số PR dạng JSON). Chỉ có tác dụng khi router đang tạm dừng toàn bộ và allowlist không rỗng.
+
+### Kết quả chạy thử
+
+(Controller điền sau khi theo dõi một ngày: số sự kiện, số lô, số mục A/C1/C2/D, số lần owner can thiệp, lỗi gặp phải.)

@@ -586,3 +586,30 @@ def test_scan_all_iterates_projects(tmp_git_repo, tmp_path, capsys, monkeypatch)
 def test_scan_all_rejects_pr_and_project(capsys, tmp_path):
     assert run(capsys, ["scan", "--all", "--pr", "1", "--config-dir", str(tmp_path)])[0] == 2
     assert run(capsys, ["scan", "--all", "--project", "x", "--config-dir", str(tmp_path)])[0] == 2
+
+
+def test_resume_pr_while_paused_adds_to_allowlist(tmp_git_repo, proj, capsys):
+    cfg, store, opts = proj(tmp_git_repo)
+    assert run(capsys, ["pause", *opts])[0] == 0
+    rc, out = run(capsys, ["resume", "581", *opts])
+    assert rc == 0 and "allowlist" in out and "#581" in out and store.kv_get("allowlist") == "[581]"
+    run(capsys, ["resume", "582", *opts])
+    assert store.kv_get("allowlist") == "[581, 582]"
+    run(capsys, ["pause", "581", *opts])
+    assert store.kv_get("allowlist") == "[582]" and store.kv_get("paused_pr:581") == "owner"
+    assert run(capsys, ["resume", *opts])[0] == 0
+    assert store.kv_get("allowlist") is None and store.kv_get("paused") is None
+
+
+def test_resume_pr_when_not_paused_leaves_allowlist_alone(tmp_git_repo, proj, capsys):
+    cfg, store, opts = proj(tmp_git_repo)
+    run(capsys, ["resume", "581", *opts])
+    assert store.kv_get("allowlist") is None
+
+
+def test_scan_suggest_pilot_requires_dry_run_and_is_read_only(tmp_git_repo, proj, capsys):
+    cfg, store, opts = proj(tmp_git_repo)
+    rc, out = run(capsys, ["scan", "--suggest-pilot", *opts])
+    assert rc == 2 and "--dry-run" in out
+    rc, out = run(capsys, ["scan", "--dry-run", "--suggest-pilot", *opts])
+    assert rc == 0 and store.snapshots() == {}
