@@ -22,6 +22,7 @@ def test_timer_interval_is_five_minutes():
 def test_service_runs_scan_all():
     s = load("autopilot.service")
     assert s["Service"]["Type"] == "oneshot"
+    assert s["Service"]["KillMode"] == "process"  # detached workers outlive the oneshot scan
     assert s["Service"]["ExecStart"] == "%h/.claude/scripts/autopilot/.venv/bin/autopilot scan --all"
 
 
