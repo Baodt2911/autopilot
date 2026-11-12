@@ -3,6 +3,8 @@
 
 def average(values):
     """Return the arithmetic mean of a list of numbers."""
+    if not values:
+        return 0.0
     total = 0
     for v in values:
         total += v
