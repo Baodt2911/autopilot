@@ -203,3 +203,24 @@ def test_load_token_fixes_permissions(tmp_path):
     p.chmod(0o644)
     web.load_token(p)
     assert oct(os.stat(p).st_mode & 0o777) == "0o600"
+
+
+def test_demo_mode_uses_temp_db(tmp_path):
+    from autopilot.web import demo
+    cd, tf, wl, root = demo.build_demo(tmp_path / "demo")
+    cfg = load_config("demo", cd)
+    assert str(cfg.db_path).startswith(str(tmp_path)) and cfg.db_path.exists()
+    assert "autopilot/projects" not in str(cd)
+    srv = web.make_server(cd, port=0, token=TOKEN, transport_factory=tf, worktree_lister=wl)
+    t = threading.Thread(target=srv.serve_forever, daemon=True)
+    t.start()
+    try:
+        e = type("E", (), dict(base=f"http://127.0.0.1:{srv.server_address[1]}"))
+        assert {i["kind"] for i in call(e, "/api/items")[1]} == {"Q", "P", "R"}
+        assert len(call(e, "/api/prs")[1]) == 5
+        states = {w["branch"]: w["state"] for w in call(e, "/api/workers")[1]}
+        assert set(states.values()) >= {"working", "waiting", "idle", "none"}
+        assert len(call(e, "/api/backlog")[1]["entries"]) == 2
+    finally:
+        srv.shutdown()
+        srv.server_close()

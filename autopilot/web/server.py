@@ -479,11 +479,20 @@ def make_server(config_dir: Path, host: str = "127.0.0.1", port: int = 8787, *, 
     return srv
 
 
-def serve(config_dir: Path = DEFAULT_CONFIG_DIR, port: int = 8787, token_path: Path = TOKEN_FILE) -> int:  # pragma: no cover
-    token = load_token(token_path)
-    srv = make_server(config_dir, "127.0.0.1", port, token=token)
+def serve(config_dir: Path = DEFAULT_CONFIG_DIR, port: int = 8787, token_path: Path = TOKEN_FILE,
+          demo: bool = False) -> int:  # pragma: no cover
+    kw = {}
+    if demo:  # temp DB + temp config + fake workers; never touches real config, gh, git or claude
+        from .demo import build_demo
+        config_dir, tf, wl, root = build_demo()
+        kw = {"transport_factory": tf, "worktree_lister": wl}
+        token = secrets.token_urlsafe(32)
+        print(f"Chế độ demo: dữ liệu giả nằm trong {root}")
+    else:
+        token = load_token(token_path)
+    srv = make_server(config_dir, "127.0.0.1", port, token=token, **kw)
     port = srv.server_address[1]
-    if sys.stdout.isatty():
+    if demo or sys.stdout.isatty():
         print(f"Dashboard: http://127.0.0.1:{port}/?token={token}")
     else:
         print(f"Dashboard: http://127.0.0.1:{port}/ (token trong {token_path})")

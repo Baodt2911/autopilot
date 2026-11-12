@@ -402,7 +402,7 @@ def cmd_push_decisions(args) -> int:
 def cmd_web(args) -> int:
     from .web import server
     cd = Path(args.config_dir) if args.config_dir else DEFAULT_CONFIG_DIR
-    return server.serve(cd, port=args.port)  # pragma: no cover
+    return server.serve(cd, port=args.port, demo=args.demo)  # pragma: no cover
 
 
 # ---- worker commands ------------------------------------------------------------
@@ -692,7 +692,9 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("key")
     sp.add_argument("value", nargs="?")
     add("push-decisions", cmd_push_decisions).add_argument("issue", type=int)
-    add("web", cmd_web).add_argument("--port", type=int, default=8787)
+    sp = add("web", cmd_web)
+    sp.add_argument("--port", type=int, default=8787)
+    sp.add_argument("--demo", action="store_true", help="dữ liệu giả trong DB tạm")
     add("ack", cmd_ack).add_argument("batch", type=int)
     add("start", cmd_start).add_argument("batch", type=int)
     sp = add("item", cmd_item)

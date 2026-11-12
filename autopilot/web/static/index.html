@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Autopilot</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='%232f6fdb'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">Autopilot</div>
+  <label class="field-inline"><span class="sr-only">Dự án</span>
+    <select id="project" title="Chọn dự án" aria-label="Chọn dự án"></select></label>
+  <span id="router-state" class="badge muted">Đang tải…</span>
+  <span id="slots" class="chip" title="Worker đang chạy / tối đa">Slot –/–</span>
+  <span id="incidents" class="chip bad" hidden></span>
+  <span class="spacer"></span>
+  <button id="toggle-router" class="btn" type="button" disabled>Dừng</button>
+</header>
+<div id="banner" class="banner" role="alert" hidden></div>
+
+<main>
+  <section id="decisions" class="decisions" aria-labelledby="h-decisions">
+    <h2 id="h-decisions">Cần bạn quyết <span id="decisions-count" class="count"></span></h2>
+    <div id="decisions-list" class="cards"></div>
+    <p id="decisions-empty" class="empty" hidden>Không có việc nào đang chờ bạn.</p>
+  </section>
+
+  <section aria-labelledby="h-prs">
+    <div class="sec-head"><h2 id="h-prs">Bảng PR</h2>
+      <button id="copy-all" class="btn small" type="button">Copy tất cả link</button></div>
+    <div class="table-wrap"><table id="prs" class="prs">
+      <thead><tr><th>PR</th><th>Nhánh</th><th>Trạng thái</th><th>Việc gần nhất</th><th>Thao tác</th></tr></thead>
+      <tbody></tbody></table></div>
+    <p id="prs-empty" class="empty" hidden>Chưa có PR mở nào.</p>
+  </section>
+
+  <section aria-labelledby="h-workers">
+    <h2 id="h-workers">Worker</h2>
+    <div id="workers" class="cards workers"></div>
+    <p id="workers-empty" class="empty" hidden>Chưa có worktree nào.</p>
+  </section>
+
+  <div class="two-col">
+    <section aria-labelledby="h-timeline">
+      <div class="sec-head"><h2 id="h-timeline">Dòng thời gian</h2>
+        <label class="field-inline"><span class="sr-only">Lọc theo PR</span>
+          <select id="tl-filter" aria-label="Lọc dòng thời gian theo PR" title="Lọc theo PR"></select></label></div>
+      <ol id="timeline" class="timeline"></ol>
+      <p id="timeline-empty" class="empty" hidden>Chưa có sự kiện nào.</p>
+    </section>
+
+    <div class="stack">
+      <section aria-labelledby="h-digest">
+        <h2 id="h-digest">Tóm tắt</h2>
+        <p id="digest-summary" class="lead"></p>
+        <div id="digest-night" class="digest-block"></div>
+        <div id="digest-today" class="digest-block"></div>
+      </section>
+
+      <section aria-labelledby="h-backlog">
+        <h2 id="h-backlog">Backlog</h2>
+        <div class="tabs" role="tablist" aria-label="Loại backlog">
+          <button type="button" role="tab" id="tab-spec-gap" aria-selected="true" data-kind="spec-gap">spec-gap <span class="count"></span></button>
+          <button type="button" role="tab" id="tab-scope" aria-selected="false" data-kind="scope">scope <span class="count"></span></button>
+        </div>
+        <ul id="backlog" class="backlog" role="tabpanel"></ul>
+      </section>
+    </div>
+  </div>
+
+  <section aria-labelledby="h-settings">
+    <h2 id="h-settings">Cài đặt</h2>
+    <div class="two-col">
+      <form id="settings" class="settings" autocomplete="off"></form>
+      <div class="stack">
+        <form id="qa-form" class="panel" autocomplete="off">
+          <h3>Dán QA</h3>
+          <label>Tên <input id="qa-name" type="text" placeholder="vd: run-1" maxlength="64" required></label>
+          <label>Nội dung <textarea id="qa-text" rows="5" placeholder="Dán kết quả QA tại đây" required></textarea></label>
+          <button class="btn" type="submit">Lưu QA</button>
+        </form>
+        <form id="push-form" class="panel" autocomplete="off">
+          <h3>Đẩy quyết định</h3>
+          <label>Số issue <input id="push-issue" type="number" min="1" step="1" inputmode="numeric" required></label>
+          <button class="btn" type="submit" id="push-btn">Đẩy quyết định lên issue #…</button>
+        </form>
+      </div>
+    </div>
+  </section>
+</main>
+<footer class="foot"><span id="updated">Chưa cập nhật</span> · tự làm mới mỗi 5 giây</footer>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<script src="/static/app.js"></script>
+</body>
+</html>
