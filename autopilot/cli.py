@@ -9,7 +9,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from . import answers, router
+from . import answers, ops, router
 from .config import DEFAULT_CONFIG_DIR, EDITABLE_KEYS, Config, list_projects, load_config, set_override
 from .github import AuthError, CmdError
 from .render import pending_md
@@ -288,33 +288,21 @@ def cmd_scan(args) -> int:
 
 def cmd_pause(args) -> int:
     _, store = _ctx(args)
+    ops.pause(store, args.pr)
     if args.pr is None:
-        store.kv_set("paused", "1")
         print("Đã tạm dừng router: vẫn quét và gom sự kiện, nhưng không giao việc cho worker.")
     else:
-        store.kv_set(f"paused_pr:{args.pr}", "owner")
         print(f"Đã tạm dừng PR #{args.pr}.")
     return 0
 
 
 def cmd_resume(args) -> int:
     _, store = _ctx(args)
+    n = ops.resume(store, args.pr, _now().date())
     if args.pr is None:
-        store.kv_set("paused", None)
-        store.kv_set("auth_alerted", None)
         print("Đã tiếp tục router.")
-        return 0
-    pr = args.pr
-    by_cap = store.kv_get(f"paused_pr:{pr}") == "limit"
-    store.kv_set(f"paused_pr:{pr}", None)
-    n = 0
-    if by_cap:  # events of batches cancelled by the wake cap go back to the queue
-        cancelled = {i for b in store.batches(status="cancelled", pr=pr) for i in b["event_ids"]}
-        ids = [e.id for e in store.events(status="batched", pr=pr) if e.id in cancelled]
-        store.mark_events(ids, "new")
-        store.reset_wake(pr, _now().date())
-        n = len(ids)
-    print(f"Đã tiếp tục PR #{pr}." + (f" Đưa lại {n} sự kiện vào hàng đợi." if n else ""))
+    else:
+        print(f"Đã tiếp tục PR #{args.pr}." + (f" Đưa lại {n} sự kiện vào hàng đợi." if n else ""))
     return 0
 
 
@@ -395,7 +383,7 @@ def cmd_config(args) -> int:
     value: int | str = int(args.value) if args.value.lstrip("-").isdigit() else args.value
     try:
         set_override(cfg.name, args.key, value, cd)
-    except (KeyError, TypeError) as e:
+    except (KeyError, TypeError, ValueError) as e:
         return _err(f"Không đặt được {args.key}: {e}")
     print(f"Đã đặt {args.key} = {value}.")
     return 0
@@ -412,12 +400,9 @@ def cmd_push_decisions(args) -> int:
 
 
 def cmd_web(args) -> int:
-    try:
-        from .web import server  # Task 15
-    except ImportError:
-        return _err("Dashboard web chưa có (Task 15).")
-    cfg, store = _ctx(args)
-    return server.main(cfg, store)  # pragma: no cover
+    from .web import server
+    cd = Path(args.config_dir) if args.config_dir else DEFAULT_CONFIG_DIR
+    return server.serve(cd, port=args.port)  # pragma: no cover
 
 
 # ---- worker commands ------------------------------------------------------------
@@ -707,7 +692,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("key")
     sp.add_argument("value", nargs="?")
     add("push-decisions", cmd_push_decisions).add_argument("issue", type=int)
-    add("web", cmd_web)
+    add("web", cmd_web).add_argument("--port", type=int, default=8787)
     add("ack", cmd_ack).add_argument("batch", type=int)
     add("start", cmd_start).add_argument("batch", type=int)
     sp = add("item", cmd_item)

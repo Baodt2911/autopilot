@@ -66,3 +66,15 @@ def test_list_projects_skips_overrides(tmp_path):
     set_override("ivt", "max_workers", 2, tmp_path)
     assert list_projects(tmp_path) == ["ivt"]
     assert load_config("ivt", tmp_path).max_workers == 2
+
+
+def test_set_override_validates_and_is_atomic(tmp_path):
+    write(tmp_path / "ivt.toml", 'repo="/r"\nauthor="a"\ngh_user="a"\n')
+    for k, v in (("max_workers", "x"), ("limits.thread_rounds", 0),
+                 ("notify.hours", "25:00-22:00"), ("notify.digest_at", "8am")):
+        with pytest.raises(ValueError):
+            set_override("ivt", k, v, tmp_path)
+    assert not (tmp_path / "ivt.overrides.toml").exists()
+    set_override("ivt", "notify.hours", "08:00-20:00", tmp_path)
+    assert load_config("ivt", tmp_path).notify["hours"] == "08:00-20:00"
+    assert [p.name for p in tmp_path.glob("*.tmp")] == []
