@@ -44,6 +44,8 @@ Result: **not passed** on the A-threshold criterion.
 
 ## Analysis and caveats
 
+- Since fix round 2, `autopilot push` enforces the A threshold in code (more than 3 changed files, or any path matching `pr_rules.b_only_patterns`, is refused without an owner-approved P item), so a model miscount can no longer reach origin.
+
 - The failure is a file-enumeration miss: the model counts the files a reviewer names, not the shared fixture the change forces. The pre-commit A-check (real `git diff --cached`) in the live skill catches this at commit time, because the shared file will be staged; eval mode can only simulate it by reading, so this miss is an upper bound on live risk. The live safeguard is not exercised by a read-only eval.
 - Ground-truth classes are derived from the verdict table, not an explicit A/B/C label; borderline items are noted.
 - 14 items across 2 PRs is a small sample. Re-run in shadow mode on the first real PRs before enabling auto push (G10).

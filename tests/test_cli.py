@@ -365,3 +365,39 @@ def test_export_flags_need_export_events_and_file_has_no_commands(tmp_git_repo, 
                         "--config-dir", str(cd), "--project", "t"])[0] == 0
     body = next(out.glob("579-*.md")).read_text()
     assert "Lệnh phải chạy" not in body and "autopilot push" not in body and "q?" in body
+
+
+def _push_setup_files(r, proj, files):
+    cfg, store, opts, bid = push_setup(r, proj)
+    for f in files:
+        commit(r, f)
+    return cfg, store, opts, bid
+
+
+def test_push_refuses_over_three_files_without_approved_plan(tmp_git_repo_with_remote, proj, capsys, monkeypatch):
+    r = tmp_git_repo_with_remote
+    cfg, store, opts, bid = _push_setup_files(r, proj, [f"src/f{i}.py" for i in range(4)])
+    monkeypatch.chdir(r)
+    rc, out = run(capsys, ["push", str(bid), *opts])
+    assert rc == 1 and "> 3" in out and "plan P" in out
+    assert git(r, "rev-parse", "HEAD") != git(tmp_git_repo_with_remote / ".git" / "..", "rev-parse", "origin/feat/x")
+
+
+def test_push_allows_with_approved_plan(tmp_git_repo_with_remote, proj, capsys, monkeypatch):
+    from autopilot import answers
+    r = tmp_git_repo_with_remote
+    cfg, store, opts, bid = _push_setup_files(r, proj, [f"src/f{i}.py" for i in range(4)])
+    monkeypatch.chdir(r)
+    code = store.add_item("P", 581, bid, "plan", "body", T0)
+    assert run(capsys, ["push", str(bid), *opts])[0] == 1  # open plan is not approval
+    answers.approve(store, cfg, code, True, "", T0)
+    rc, out = run(capsys, ["push", str(bid), *opts])
+    assert rc == 0, out
+
+
+def test_push_refuses_b_only_pattern(tmp_git_repo_with_remote, proj, capsys, monkeypatch):
+    r = tmp_git_repo_with_remote
+    cfg, store, opts, bid = _push_setup_files(r, proj, ["apps/api/prisma/migrations/1_x/migration.sql"])
+    monkeypatch.chdir(r)
+    rc, out = run(capsys, ["push", str(bid), *opts])
+    assert rc == 1 and "migration.sql" in out and "mục B" in out

@@ -91,7 +91,7 @@ Lookup order BEFORE choosing C2 (stop at the first hit): `decisions.md` -> `spec
 3. Before EVERY commit: `git add <specific files>` (never `-A`), then:
    - `autopilot guard-staged`. If it fails, `git restore --staged <listed files>` and run it again.
    - A-check on every A item: `git diff --cached --name-only`. If it lists more than 3 files, or any migration, schema (`*.prisma`, `migration.sql`) or API-contract file: this is NOT an A. `git restore --staged .`, then revert the edits with `git restore <each changed file>` (list them with `git status`; scratch files stay), reclassify as B, write the plan describing the change, send it as a P item, and commit nothing for it.
-4. Push once, ONLY with `autopilot push <batch>`. Never `git push`.
+4. Push once, ONLY with `autopilot push <batch>`. Never `git push`. It refuses (exit 1) when the branch differs from origin by more than 3 files or touches migration/schema/contract paths and no owner-approved P item exists: then write the plan (P item) instead of pushing.
 5. Reply per thread in English with `autopilot reply` (see Replies), with SHA or citation. Do not resolve threads.
 6. When the owner's answers arrive (an "answer" event with `answer`/`reply_hint`/`choice`/`note`): do the work, reply per G12, push, as above. An ambiguous answer: new C2 item asking one question.
 7. Finish: write `<=5` lines (Vietnamese) to a file in `.autopilot/scratch/`: what was done, item codes waiting. Then `autopilot result <batch> --file <path> --status done` (or `waiting_owner` when any Q/P/R is open).

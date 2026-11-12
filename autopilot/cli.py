@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import subprocess
 import sys
 from datetime import datetime
@@ -491,6 +492,7 @@ def cmd_reply(args) -> int:
                     if i["pr"] == pr and i["kind"] == "Q" and i.get("target") and i["target"] in ids]
         if silenced:
             return _err(f"Thread đang chờ owner ({', '.join(silenced)}): im lặng, không reply (G7).")
+    # the round counter is bumped when the batch is created, so the 3rd round itself must still reply: use ">"
     if args.thread and store.round_count(args.thread) > cfg.limits["thread_rounds"]:
         return _err(f"Thread đã quá {cfg.limits['thread_rounds']} vòng reply (G9): không reply, hãy xếp C2.")
     body = Path(args.file).read_text(encoding="utf-8")
@@ -542,6 +544,15 @@ def cmd_guard_staged(args) -> int:
     return 0
 
 
+DEFAULT_B_ONLY = ("**/migrations/**", "**/*.prisma", "**/schema*.sql", "**/openapi*.y*ml",
+                  "docs/**/api-contract*.md")
+
+
+def _approved_plan(store: Store, pr: int) -> bool:
+    return any(i["kind"] == "P" and i["pr"] == pr and i["status"] == "closed" and i["answer"] == "approved"
+               for i in store.closed_items())
+
+
 def cmd_push(args) -> int:
     cfg, store = _ctx(args)
     b = _batch(store, args.batch)
@@ -570,6 +581,14 @@ def cmd_push(args) -> int:
     bad = [x for x in d.stdout.splitlines() if router.is_forbidden(x, cfg.forbidden)]
     if bad:
         return _err("Commit chứa file cấm: " + ", ".join(bad))
+    changed = [x for x in d.stdout.splitlines() if x]
+    pats = (cfg.pr_rules or {}).get("b_only_patterns") or DEFAULT_B_ONLY
+    b_only = [x for x in changed if any(fnmatch.fnmatchcase(x, q) or fnmatch.fnmatchcase("/" + x, q) for q in pats)]
+    if (len(changed) > 3 or b_only) and not _approved_plan(store, b["pr"]):
+        why = (f"chạm file chỉ cho mục B: {', '.join(b_only)}" if b_only
+               else f"{len(changed)} file thay đổi (> 3)")
+        return _err(f"Không push: {why}. Đây không phải mục A: hãy viết plan P "
+                    "(`autopilot item <batch> P ...`) và chờ owner duyệt (`autopilot ok P-...`) rồi push lại.")
     if _git(["merge-base", "--is-ancestor", f"origin/{head}", "HEAD"], repo).returncode != 0:
         return _err(f"origin/{head} có commit mới mà nhánh local chưa có (cần force): không push. "
                     "Hãy rebase/merge origin trước.")
