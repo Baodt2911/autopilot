@@ -1,0 +1,2648 @@
+{
+  "data": {
+    "search": {
+      "nodes": [
+        {
+          "id": "PR_101",
+          "number": 101,
+          "title": "Synthetic PR 101",
+          "url": "https://github.com/example/repo/pull/101",
+          "isDraft": false,
+          "state": "OPEN",
+          "mergedAt": null,
+          "headRefName": "feat/x-101",
+          "headRefOid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "baseRefName": "develop",
+          "baseRefOid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "mergeable": "CONFLICTING",
+          "reviewDecision": "CHANGES_REQUESTED",
+          "reviewThreads": {
+            "nodes": [
+              {
+                "id": "T_001",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_1",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 1",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r1",
+                      "path": "src/a.py",
+                      "line": 10
+                    },
+                    {
+                      "id": "RC_2",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 2",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r2",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": true,
+                    "endCursor": "C1"
+                  }
+                }
+              },
+              {
+                "id": "T_002",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_20",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 20",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r20",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_003",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_30",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 30",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r30",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_004",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_40",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 40",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r40",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_005",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_50",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 50",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r50",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_006",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_60",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 60",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r60",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_007",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_70",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 70",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r70",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_008",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_80",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 80",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r80",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_009",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_90",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 90",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r90",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_010",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_100",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 100",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r100",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_011",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_110",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 110",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r110",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_012",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_120",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 120",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r120",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_013",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_130",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 130",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r130",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_014",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_140",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 140",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r140",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_015",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_150",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 150",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r150",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_016",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_160",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 160",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r160",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_017",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_170",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 170",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r170",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_018",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_180",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 180",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r180",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_019",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_190",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 190",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r190",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_020",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_200",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 200",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r200",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_021",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_210",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 210",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r210",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_022",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_220",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 220",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r220",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_023",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_230",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 230",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r230",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_024",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_240",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 240",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r240",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_025",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_250",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 250",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r250",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_026",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_260",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 260",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r260",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_027",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_270",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 270",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r270",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_028",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_280",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 280",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r280",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_029",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_290",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 290",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r290",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_030",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_300",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 300",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r300",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_031",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_310",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 310",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r310",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_032",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_320",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 320",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r320",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_033",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_330",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 330",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r330",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_034",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_340",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 340",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r340",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_035",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_350",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 350",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r350",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_036",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_360",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 360",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r360",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_037",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_370",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 370",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r370",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_038",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_380",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 380",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r380",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_039",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_390",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 390",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r390",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_040",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_400",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 400",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r400",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_041",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_410",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 410",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r410",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_042",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_420",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 420",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r420",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_043",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_430",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 430",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r430",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_044",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_440",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 440",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r440",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_045",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_450",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 450",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r450",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_046",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_460",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 460",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r460",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_047",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_470",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 470",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r470",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_048",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_480",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 480",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r480",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_049",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_490",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 490",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r490",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_050",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_500",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 500",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r500",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_051",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_510",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 510",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r510",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_052",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_520",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 520",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r520",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_053",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_530",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 530",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r530",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_054",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_540",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 540",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r540",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_055",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_550",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 550",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r550",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_056",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_560",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 560",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r560",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_057",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_570",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 570",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r570",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_058",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_580",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 580",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r580",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_059",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_590",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 590",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r590",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_060",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_600",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 600",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r600",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_061",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_610",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 610",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r610",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_062",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_620",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 620",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r620",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_063",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_630",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 630",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r630",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_064",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_640",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 640",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r640",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_065",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_650",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 650",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r650",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_066",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_660",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 660",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r660",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_067",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_670",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 670",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r670",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_068",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_680",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 680",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r680",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_069",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_690",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 690",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r690",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_070",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_700",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 700",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r700",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_071",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_710",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 710",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r710",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_072",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_720",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 720",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r720",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_073",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_730",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 730",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r730",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_074",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_740",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 740",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r740",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_075",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_750",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 750",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r750",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_076",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_760",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 760",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r760",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_077",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_770",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 770",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r770",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_078",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_780",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 780",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r780",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_079",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_790",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 790",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r790",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_080",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_800",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 800",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r800",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_081",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_810",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 810",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r810",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_082",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_820",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 820",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r820",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_083",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_830",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 830",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r830",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_084",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_840",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 840",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r840",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_085",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_850",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 850",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r850",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_086",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_860",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 860",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r860",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_087",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_870",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 870",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r870",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_088",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_880",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 880",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r880",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_089",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_890",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 890",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r890",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_090",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_900",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 900",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r900",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_091",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_910",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 910",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r910",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_092",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_920",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 920",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r920",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_093",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_930",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 930",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r930",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_094",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_940",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 940",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r940",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_095",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_950",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 950",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r950",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_096",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_960",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 960",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r960",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_097",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_970",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 970",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r970",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_098",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_980",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 980",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r980",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_099",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_990",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 990",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r990",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              },
+              {
+                "id": "T_100",
+                "isResolved": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "id": "RC_1000",
+                      "author": {
+                        "login": "reviewer-a",
+                        "__typename": "User"
+                      },
+                      "body": "synthetic comment 1000",
+                      "createdAt": "2026-01-02T03:04:05Z",
+                      "updatedAt": "2026-01-02T03:04:05Z",
+                      "url": "https://github.com/example/repo/pull/101#discussion_r1000",
+                      "path": "src/a.py",
+                      "line": 10
+                    }
+                  ],
+                  "pageInfo": {
+                    "hasNextPage": false,
+                    "endCursor": null
+                  }
+                }
+              }
+            ],
+            "pageInfo": {
+              "hasNextPage": true,
+              "endCursor": "T100"
+            }
+          },
+          "reviews": {
+            "nodes": [
+              {
+                "id": "R_1",
+                "author": {
+                  "login": "reviewer-a"
+                },
+                "state": "CHANGES_REQUESTED",
+                "submittedAt": "2026-01-02T03:00:00Z",
+                "body": "synthetic review body",
+                "url": "https://github.com/example/repo/pull/101#pullrequestreview-1"
+              }
+            ],
+            "pageInfo": {
+              "hasNextPage": false,
+              "endCursor": null
+            }
+          },
+          "comments": {
+            "nodes": [
+              {
+                "id": "IC_1",
+                "author": {
+                  "login": "author-x",
+                  "__typename": "User"
+                },
+                "body": "synthetic issue comment",
+                "createdAt": "2026-01-02T04:00:00Z",
+                "updatedAt": "2026-01-02T04:00:00Z",
+                "url": "https://github.com/example/repo/pull/101#issuecomment-1"
+              },
+              {
+                "id": "IC_2",
+                "author": {
+                  "login": "ci-helper",
+                  "__typename": "Bot"
+                },
+                "body": "synthetic bot comment",
+                "createdAt": "2026-01-02T04:05:00Z",
+                "updatedAt": "2026-01-02T04:05:00Z",
+                "url": "https://github.com/example/repo/pull/101#issuecomment-2"
+              }
+            ],
+            "pageInfo": {
+              "hasNextPage": false,
+              "endCursor": null
+            }
+          },
+          "files": {
+            "nodes": [
+              {
+                "path": "src/a.py"
+              },
+              {
+                "path": "src/b.py"
+              }
+            ],
+            "pageInfo": {
+              "hasNextPage": false,
+              "endCursor": null
+            }
+          },
+          "commits": {
+            "nodes": [
+              {
+                "commit": {
+                  "statusCheckRollup": {
+                    "contexts": {
+                      "nodes": [
+                        {
+                          "__typename": "CheckRun",
+                          "name": "build",
+                          "conclusion": "SUCCESS"
+                        },
+                        {
+                          "__typename": "CheckRun",
+                          "name": "unit-tests",
+                          "conclusion": "FAILURE"
+                        },
+                        {
+                          "__typename": "CheckRun",
+                          "name": "lint",
+                          "conclusion": "TIMED_OUT"
+                        },
+                        {
+                          "__typename": "CheckRun",
+                          "name": "e2e",
+                          "conclusion": "CANCELLED"
+                        },
+                        {
+                          "__typename": "StatusContext",
+                          "context": "legacy"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "pageInfo": {
+        "hasNextPage": false,
+        "endCursor": null
+      }
+    }
+  }
+}

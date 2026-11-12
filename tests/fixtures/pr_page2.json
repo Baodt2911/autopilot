@@ -1,0 +1,139 @@
+{
+  "data": {
+    "node": {
+      "reviewThreads": {
+        "nodes": [
+          {
+            "id": "T_101",
+            "isResolved": false,
+            "comments": {
+              "nodes": [
+                {
+                  "id": "RC_1010",
+                  "author": {
+                    "login": "reviewer-a",
+                    "__typename": "User"
+                  },
+                  "body": "synthetic comment 1010",
+                  "createdAt": "2026-01-02T03:04:05Z",
+                  "updatedAt": "2026-01-02T03:04:05Z",
+                  "url": "https://github.com/example/repo/pull/101#discussion_r1010",
+                  "path": "src/a.py",
+                  "line": 10
+                }
+              ],
+              "pageInfo": {
+                "hasNextPage": false,
+                "endCursor": null
+              }
+            }
+          },
+          {
+            "id": "T_102",
+            "isResolved": false,
+            "comments": {
+              "nodes": [
+                {
+                  "id": "RC_1020",
+                  "author": {
+                    "login": "reviewer-a",
+                    "__typename": "User"
+                  },
+                  "body": "synthetic comment 1020",
+                  "createdAt": "2026-01-02T03:04:05Z",
+                  "updatedAt": "2026-01-02T03:04:05Z",
+                  "url": "https://github.com/example/repo/pull/101#discussion_r1020",
+                  "path": "src/a.py",
+                  "line": 10
+                }
+              ],
+              "pageInfo": {
+                "hasNextPage": false,
+                "endCursor": null
+              }
+            }
+          },
+          {
+            "id": "T_103",
+            "isResolved": false,
+            "comments": {
+              "nodes": [
+                {
+                  "id": "RC_1030",
+                  "author": {
+                    "login": "reviewer-a",
+                    "__typename": "User"
+                  },
+                  "body": "synthetic comment 1030",
+                  "createdAt": "2026-01-02T03:04:05Z",
+                  "updatedAt": "2026-01-02T03:04:05Z",
+                  "url": "https://github.com/example/repo/pull/101#discussion_r1030",
+                  "path": "src/a.py",
+                  "line": 10
+                }
+              ],
+              "pageInfo": {
+                "hasNextPage": false,
+                "endCursor": null
+              }
+            }
+          },
+          {
+            "id": "T_104",
+            "isResolved": false,
+            "comments": {
+              "nodes": [
+                {
+                  "id": "RC_1040",
+                  "author": {
+                    "login": "reviewer-a",
+                    "__typename": "User"
+                  },
+                  "body": "synthetic comment 1040",
+                  "createdAt": "2026-01-02T03:04:05Z",
+                  "updatedAt": "2026-01-02T03:04:05Z",
+                  "url": "https://github.com/example/repo/pull/101#discussion_r1040",
+                  "path": "src/a.py",
+                  "line": 10
+                }
+              ],
+              "pageInfo": {
+                "hasNextPage": false,
+                "endCursor": null
+              }
+            }
+          },
+          {
+            "id": "T_105",
+            "isResolved": false,
+            "comments": {
+              "nodes": [
+                {
+                  "id": "RC_1050",
+                  "author": {
+                    "login": "reviewer-a",
+                    "__typename": "User"
+                  },
+                  "body": "synthetic comment 1050",
+                  "createdAt": "2026-01-02T03:04:05Z",
+                  "updatedAt": "2026-01-02T03:04:05Z",
+                  "url": "https://github.com/example/repo/pull/101#discussion_r1050",
+                  "path": "src/a.py",
+                  "line": 10
+                }
+              ],
+              "pageInfo": {
+                "hasNextPage": false,
+                "endCursor": null
+              }
+            }
+          }
+        ],
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": null
+        }
+      }
+    }
+  }
+}

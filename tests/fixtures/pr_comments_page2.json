@@ -1,0 +1,27 @@
+{
+  "data": {
+    "node": {
+      "comments": {
+        "nodes": [
+          {
+            "id": "RC_3",
+            "author": {
+              "login": "bot-y",
+              "__typename": "Bot"
+            },
+            "body": "synthetic comment 3",
+            "createdAt": "2026-01-02T03:04:05Z",
+            "updatedAt": "2026-01-02T03:04:05Z",
+            "url": "https://github.com/example/repo/pull/101#discussion_r3",
+            "path": "src/a.py",
+            "line": 10
+          }
+        ],
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": null
+        }
+      }
+    }
+  }
+}

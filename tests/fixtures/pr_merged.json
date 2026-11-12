@@ -1,0 +1,128 @@
+{
+  "data": {
+    "repository": {
+      "pullRequest": {
+        "id": "PR_102",
+        "number": 102,
+        "title": "Synthetic PR 102",
+        "url": "https://github.com/example/repo/pull/102",
+        "isDraft": false,
+        "state": "MERGED",
+        "mergedAt": "2026-01-03T05:00:00Z",
+        "headRefName": "feat/x-102",
+        "headRefOid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "baseRefName": "develop",
+        "baseRefOid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mergeable": "UNKNOWN",
+        "reviewDecision": null,
+        "reviewThreads": {
+          "nodes": [],
+          "pageInfo": {
+            "hasNextPage": false,
+            "endCursor": null
+          }
+        },
+        "reviews": {
+          "nodes": [
+            {
+              "id": "R_1",
+              "author": {
+                "login": "reviewer-a"
+              },
+              "state": "CHANGES_REQUESTED",
+              "submittedAt": "2026-01-02T03:00:00Z",
+              "body": "synthetic review body",
+              "url": "https://github.com/example/repo/pull/102#pullrequestreview-1"
+            }
+          ],
+          "pageInfo": {
+            "hasNextPage": false,
+            "endCursor": null
+          }
+        },
+        "comments": {
+          "nodes": [
+            {
+              "id": "IC_1",
+              "author": {
+                "login": "author-x",
+                "__typename": "User"
+              },
+              "body": "synthetic issue comment",
+              "createdAt": "2026-01-02T04:00:00Z",
+              "updatedAt": "2026-01-02T04:00:00Z",
+              "url": "https://github.com/example/repo/pull/102#issuecomment-1"
+            },
+            {
+              "id": "IC_2",
+              "author": {
+                "login": "ci-helper",
+                "__typename": "Bot"
+              },
+              "body": "synthetic bot comment",
+              "createdAt": "2026-01-02T04:05:00Z",
+              "updatedAt": "2026-01-02T04:05:00Z",
+              "url": "https://github.com/example/repo/pull/102#issuecomment-2"
+            }
+          ],
+          "pageInfo": {
+            "hasNextPage": false,
+            "endCursor": null
+          }
+        },
+        "files": {
+          "nodes": [
+            {
+              "path": "src/a.py"
+            },
+            {
+              "path": "src/b.py"
+            }
+          ],
+          "pageInfo": {
+            "hasNextPage": false,
+            "endCursor": null
+          }
+        },
+        "commits": {
+          "nodes": [
+            {
+              "commit": {
+                "statusCheckRollup": {
+                  "contexts": {
+                    "nodes": [
+                      {
+                        "__typename": "CheckRun",
+                        "name": "build",
+                        "conclusion": "SUCCESS"
+                      },
+                      {
+                        "__typename": "CheckRun",
+                        "name": "unit-tests",
+                        "conclusion": "FAILURE"
+                      },
+                      {
+                        "__typename": "CheckRun",
+                        "name": "lint",
+                        "conclusion": "TIMED_OUT"
+                      },
+                      {
+                        "__typename": "CheckRun",
+                        "name": "e2e",
+                        "conclusion": "CANCELLED"
+                      },
+                      {
+                        "__typename": "StatusContext",
+                        "context": "legacy"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}
