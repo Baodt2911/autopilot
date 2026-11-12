@@ -203,9 +203,14 @@ def _rewind(snap, author: str):
             cs.append(c)
         if cs:
             threads.append(Thread(id=t.id, is_resolved=False, comments=tuple(cs)))
+    mine = [c.created_at for t in snap.threads for c in t.comments if c.author == author]
+    mine += [r.submitted_at for r in snap.reviews if r.author == author]
+    mine += [c.created_at for c in snap.comments if c.author == author]
+    cut = min(mine, default=None)  # reviews/comments after the author's first move are follow-ups
+    before = (lambda ts: cut is None or ts < cut)
     return replace(snap, threads=tuple(threads),
-                   reviews=tuple(r for r in snap.reviews if r.author != author),
-                   comments=tuple(c for c in snap.comments if c.author != author))
+                   reviews=tuple(r for r in snap.reviews if r.author != author and before(r.submitted_at)),
+                   comments=tuple(c for c in snap.comments if c.author != author and before(c.created_at)))
 
 
 def cmd_scan(args) -> int:

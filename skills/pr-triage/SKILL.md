@@ -35,7 +35,7 @@ Every `autopilot` command below takes `--project <name>` when the prompt gave on
 
 ## 2. Classify every event (5.2)
 
-Classify each comment/review/event separately. A review body with inline threads: classify the inline threads; the review body only if it asks something itself.
+Classify each request separately. One comment or review body that lists several distinct requests (bullets, bold file headings, several file references) is SPLIT into one item per request: number them `<event#>.<k>` and classify each on its own. Inline threads are items too. A bare LGTM / approved is noop.
 
 | Class | Criteria | Action |
 |---|---|---|
