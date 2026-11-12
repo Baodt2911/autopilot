@@ -248,3 +248,22 @@ def test_export_events_requires_pr_out_and_dry_run(capsys):
     assert rc == 2
     rc, _ = run(capsys, ["scan", "--dry-run", "--export-events", "--out", "x"])
     assert rc == 2
+
+
+def test_export_events_rewind_reopens_threads_before_author_reply(tmp_git_repo, tmp_path, monkeypatch, capsys):
+    from autopilot.models import Thread
+    from conftest import comment
+    cd = tmp_path / "cfg"
+    cd.mkdir()
+    (cd / "t.toml").write_text(f'repo = "{tmp_git_repo}"\nauthor = "me"\ngh_user = "me"\n')
+    gh = FakeGitHub()
+    th = Thread("T1", True, (comment("c1", "first ask", author="rev"), comment("c2", "done", author="me"),
+                             comment("c3", "later chat", author="rev")))
+    gh.closed = [snap(579, state="MERGED", threads=(th,))]
+    monkeypatch.setattr(cli, "_github", lambda cfg: gh)
+    out = tmp_path / "out"
+    rc, text = run(capsys, ["scan", "--dry-run", "--export-events", "--rewind", "--pr", "579", "--out", str(out),
+                            "--config-dir", str(cd), "--project", "t"])
+    assert rc == 0, text
+    body = next(out.glob("579-*.md")).read_text()
+    assert "first ask" in body and "later chat" not in body

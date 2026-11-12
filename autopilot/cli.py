@@ -164,6 +164,8 @@ def _export_events(args) -> int:
     if snap is None:
         return _err(f"Không tìm thấy PR #{args.pr}.")
     now = _now()
+    if args.rewind:
+        snap = _rewind(snap, cfg.author)
     events = detect.detect(None, snap, cfg, now)
     if snap.state != "OPEN":  # detect() yields nothing for closed PRs; export their comments anyway
         events = detect.detect(None, _as_open(snap), cfg, now)
@@ -186,6 +188,24 @@ def _export_events(args) -> int:
 def _as_open(snap):
     from dataclasses import replace
     return replace(snap, state="OPEN", mergeable="UNKNOWN", failed_checks=())
+
+
+def _rewind(snap, author: str):
+    """The PR as the reviewer left it: threads reopened and cut before the author's first reply."""
+    from dataclasses import replace
+    from .models import Thread
+    threads = []
+    for t in snap.threads:
+        cs = []
+        for c in t.comments:
+            if c.author == author:
+                break
+            cs.append(c)
+        if cs:
+            threads.append(Thread(id=t.id, is_resolved=False, comments=tuple(cs)))
+    return replace(snap, threads=tuple(threads),
+                   reviews=tuple(r for r in snap.reviews if r.author != author),
+                   comments=tuple(c for c in snap.comments if c.author != author))
 
 
 def cmd_scan(args) -> int:
@@ -530,6 +550,8 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--claim", action="store_true")
     sp.add_argument("--export-events", action="store_true")
     sp.add_argument("--out")
+    sp.add_argument("--rewind", action="store_true",
+                    help="với --export-events: dựng lại PR như lúc reviewer vừa review (trước mọi reply của tác giả)")
     for n, fn in (("pause", cmd_pause), ("resume", cmd_resume)):
         add(n, fn).add_argument("pr", type=int, nargs="?")
     sp = add("answer", cmd_answer)
