@@ -268,3 +268,11 @@ def test_spawn_failures_escalate_after_three_with_one_alert(env):
     assert env.store.kv_get("spawn_fail:1") == "3"
     assert env.store.batch(1)["status"] == "escalated"
     assert len([a for a in env.n.alerts if "escalate" in a[1].lower() or "leo thang" in a[1].lower()]) == 1
+
+
+def test_scan_records_slots_working(env):
+    commented(env)
+    env.scan(T0)
+    env.t.states["feat/x"] = WorkerStatus("working", "s", T0)
+    env.scan(T0 + 10 * M)
+    assert env.store.kv_get("slots_working") == "1" and env.store.kv_get("slots_at")

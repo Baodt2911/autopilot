@@ -10,6 +10,7 @@ from dataclasses import dataclass, field, fields, is_dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from . import ops
 from .batching import apply_limits, batch_meta, ready_batches
 from .config import Config
 from .detect import detect, stack_warnings
@@ -384,6 +385,7 @@ def _scan(cfg, store, gh, transport, notifier, now, report, dry_run, only_pr, cl
             report.incidents.append(a.text)
             if store.kv_get(f"incident:{a.batch_id}") != a.text:
                 store.kv_set(f"incident:{a.batch_id}", a.text)
+                store.log(b["pr"], "incident", a.text, now)
                 notifier.alert("incident", f"Lô {a.batch_id} không xử lý được", a.text, now)
         else:
             session = a.session if isinstance(a, Deliver) else None
@@ -393,6 +395,7 @@ def _scan(cfg, store, gh, transport, notifier, now, report, dry_run, only_pr, cl
     # 8. health (never touches a worktree launched in this scan)
     if rw:
         _health(store, transport, notifier, now, report, worktrees, touched)
+        ops.record_slots(store, transport, worktrees, now)
 
     return _finish(cfg, store, notifier, now, report, prs_open, closed, rw)
 
@@ -438,8 +441,7 @@ def _finish(cfg, store, notifier, now, report, prs_open, closed, rw) -> ScanRepo
         notified.add(it["code"])
     store.kv_set("notified_items", json.dumps(sorted(notified)))
     notifier.reminders(now)
-    active = len(store.batches(status=("delivered", "acked", "in_progress")))
-    notifier.digest(now, f"{len(store.open_items())} việc chờ owner, {active} lô đang xử lý")
+    notifier.digest(now, ops.digest_summary(store))
     # 12. daily backup
     try:
         _backup(cfg, store, now)

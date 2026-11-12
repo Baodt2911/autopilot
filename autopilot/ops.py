@@ -46,3 +46,20 @@ def save_qa(cfg: Config, name: str, text: str):
     path = cfg.qa_dir / f"{base.lower()}.md"
     atomic_write(path, text)
     return path
+
+
+def count_working(transport, worktrees, now) -> int:
+    """Worker slots in use = worktrees with a live `claude -p` process (router rule)."""
+    return sum(1 for w in worktrees.values() if transport.status(w, now).state == "working")
+
+
+def record_slots(store: Store, transport, worktrees, now) -> int:
+    n = count_working(transport, worktrees, now)
+    store.kv_set("slots_working", str(n))
+    store.kv_set("slots_at", now.isoformat())
+    return n
+
+
+def digest_summary(store: Store) -> str:
+    active = len(store.batches(status=("delivered", "acked", "in_progress")))
+    return f"{len(store.open_items())} việc chờ owner, {active} lô đang xử lý"

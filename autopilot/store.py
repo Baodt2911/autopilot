@@ -81,6 +81,9 @@ class Store:
         if not any(r[1] == "target" for r in self._db.execute("PRAGMA table_info(items)")):
             self._db.execute("ALTER TABLE items ADD COLUMN target TEXT NOT NULL DEFAULT ''")
 
+    def close(self) -> None:
+        self._db.close()
+
     def _tx(self, fn):
         """Run fn(db) inside BEGIN IMMEDIATE so concurrent writers serialize on busy_timeout."""
         self._db.execute("BEGIN IMMEDIATE")

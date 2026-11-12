@@ -104,14 +104,15 @@ def test_qa_paste_writes_file_under_qa_dir(env):
 def test_overview_shapes(env):
     st, o, _ = call(env, "/api/overview")
     assert st == 200
-    assert o == {"paused": None, "limit_until": None, "slots": {"working": 0, "max": 5},
+    assert o == {"paused": False, "paused_prs": [], "limit_until": None, "slots": {"working": 0, "max": 5},
                  "open_items": 1, "incidents_24h": 0}
     call(env, "/api/pause", "POST", {})
-    assert call(env, "/api/overview")[1]["paused"] == "1"
+    assert call(env, "/api/overview")[1]["paused"] is True
     call(env, "/api/resume", "POST", {})
-    assert call(env, "/api/overview")[1]["paused"] is None
+    assert call(env, "/api/overview")[1]["paused"] is False
     call(env, "/api/pause", "POST", {"pr": 589})
     assert env.store.kv_get("paused_pr:589") == "owner"
+    assert call(env, "/api/overview")[1]["paused_prs"] == [589]
     (item,) = call(env, "/api/items")[1]
     assert set(item) == {"code", "kind", "pr", "title", "body_md", "created_at"}
     (pr,) = call(env, "/api/prs")[1]
@@ -159,3 +160,46 @@ def test_token_file_created_0600(tmp_path):
     t1 = web.load_token(p)
     assert len(t1) >= 32 and oct(os.stat(p).st_mode & 0o777) == "0o600"
     assert web.load_token(p) == t1
+
+
+def test_slots_working_uses_live_process_count(env):
+    env.tr.states["feat/x"] = WorkerStatus("working", "s", None)
+    assert call(env, "/api/overview")[1]["slots"]["working"] == 1  # fallback via shared helper
+    env.store.kv_set("slots_working", "0")  # router-recorded value wins
+    assert call(env, "/api/overview")[1]["slots"]["working"] == 0
+
+
+def test_incident_log_counts_and_corrupt_run_record(env):
+    env.store.log(589, "incident", "x", datetime.now(timezone.utc))
+    assert call(env, "/api/overview")[1]["incidents_24h"] == 1
+    env.store.kv_set(f"run:{env.wt.path}", "{not json")
+    (w,) = call(env, "/api/workers")[1]
+    assert w["last_run"] is None
+
+
+def test_host_referer_body_and_postauth_guards(env):
+    st, _, _ = call(env, "/api/overview", headers={"Host": "evil.example"})
+    assert st == 403
+    st, _, _ = call(env, "/api/pause", "POST", {}, headers={"Referer": "http://evil.example/x"})
+    assert st == 403
+    assert call(env, "/api/pause", "POST", {}, token=None)[0] == 401
+    big = urllib.request.Request(env.base + "/api/pause", data=b"{}", method="POST", headers={
+        "X-Autopilot-Token": TOKEN, "Content-Type": "application/json", "Content-Length": "99999999"})
+    with pytest.raises(urllib.error.HTTPError) as e:
+        urllib.request.urlopen(big)
+    assert e.value.code == 413
+    import http.client
+    c = http.client.HTTPConnection("127.0.0.1", env.srv.server_address[1])
+    c.putrequest("POST", "/api/pause")
+    c.putheader("X-Autopilot-Token", TOKEN)
+    c.putheader("Content-Type", "application/json")
+    c.endheaders()
+    assert c.getresponse().status == 411
+
+
+def test_load_token_fixes_permissions(tmp_path):
+    p = tmp_path / "t"
+    p.write_text("abc\n")
+    p.chmod(0o644)
+    web.load_token(p)
+    assert oct(os.stat(p).st_mode & 0o777) == "0o600"

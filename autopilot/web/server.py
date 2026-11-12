@@ -7,6 +7,7 @@ import mimetypes
 import os
 import re
 import secrets
+import sys
 from datetime import datetime, timedelta
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -23,8 +24,7 @@ from ..worktrees import list_worktrees
 TOKEN_FILE = Path.home() / ".config" / "autopilot" / "web-token"
 STATIC_DIR = Path(__file__).parent / "static"
 COOKIE = "autopilot_token"
-MAX_BODY = 1_200_000
-ACTIVE_BATCH = ("delivered", "acked", "in_progress")
+MAX_BODY = 2_500_000
 TERMINAL_BATCH = ("done", "escalated", "cancelled")
 INCIDENT_KINDS = ("escalated", "limit", "notify_failed", "incident")
 
@@ -40,6 +40,7 @@ def load_token(path: Path = TOKEN_FILE) -> str:
     if path.exists():
         tok = path.read_text(encoding="utf-8").strip()
         if tok:
+            os.chmod(path, 0o600)
             return tok
     path.parent.mkdir(parents=True, exist_ok=True)
     tok = secrets.token_urlsafe(32)
@@ -97,8 +98,17 @@ class Ctx:
 
 
 # ---- GET handlers -----------------------------------------------------------------
-def _batch_active(store: Store) -> list[dict]:
-    return [b for b in store.batches() if b["status"] in ACTIVE_BATCH]
+def _slots_working(ctx, cfg, store) -> int:
+    raw = store.kv_get("slots_working")  # recorded by every router scan
+    if raw is not None and raw.isdigit():
+        return int(raw)
+    try:
+        transport = ctx.transport_factory(cfg, store)
+        wts = ctx.worktree_lister(cfg)
+        transport.set_worktrees([w.path for w in wts.values()])
+        return ops.count_working(transport, wts, _now())
+    except Exception:
+        return 0
 
 
 def api_overview(ctx, cfg, store, q):
@@ -107,8 +117,10 @@ def api_overview(ctx, cfg, store, q):
     since = now - timedelta(hours=24)
     incidents = [t for t in store.timeline(limit=500)
                  if t["kind"] in INCIDENT_KINDS and t["at"] >= since]
-    return {"paused": store.kv_get("paused"), "limit_until": _iso(lim),
-            "slots": {"working": len(_batch_active(store)), "max": cfg.max_workers},
+    snaps = store.snapshots()
+    paused_prs = sorted(n for n, d in snaps.items() if d.get("state") == "OPEN" and store.kv_get(f"paused_pr:{n}"))
+    return {"paused": bool(store.kv_get("paused")), "paused_prs": paused_prs, "limit_until": _iso(lim),
+            "slots": {"working": _slots_working(ctx, cfg, store), "max": cfg.max_workers},
             "open_items": len(store.open_items()), "incidents_24h": len(incidents)}
 
 
@@ -143,11 +155,23 @@ def api_prs(ctx, cfg, store, q):
     return out
 
 
+def _int(v) -> int:
+    try:
+        return int(v or 0)
+    except ValueError:
+        return 0
+
+
 def _last_run(store: Store, path: str, working: bool) -> dict | None:
     raw = store.kv_get(f"run:{path}")
     if not raw:
         return None
-    run = json.loads(raw)
+    try:
+        run = json.loads(raw)
+        if not isinstance(run, dict):
+            return None
+    except ValueError:
+        return None
     cost, ended = None, None
     out = Path(run["out"]) if run.get("out") else None
     if out is not None and not working:
@@ -161,7 +185,7 @@ def _last_run(store: Store, path: str, working: bool) -> dict | None:
         except (OSError, ValueError):
             pass
     return {"started_at": run.get("started_at"), "ended_at": ended, "cost_usd": cost,
-            "attempts": int(store.kv_get(f"attempt:{run.get('batch')}") or 0)}
+            "attempts": _int(store.kv_get(f"attempt:{run.get('batch')}"))}
 
 
 def api_workers(ctx, cfg, store, q):
@@ -207,8 +231,7 @@ def api_settings_get(ctx, cfg, store, q):
 def api_digest(ctx, cfg, store, q):
     since = _now() - timedelta(hours=24)
     recent = [{**t, "at": _iso(t["at"])} for t in store.timeline(limit=200) if t["at"] >= since]
-    return {"summary": f"{len(store.open_items())} việc chờ owner, {len(_batch_active(store))} lô đang xử lý",
-            "recent": recent}
+    return {"summary": ops.digest_summary(store), "recent": recent}
 
 
 def api_projects(ctx, cfg, store, q):  # handled without a project
@@ -392,7 +415,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             res = fn(self.ctx, cfg, store, query) if body is None else fn(self.ctx, cfg, store, query, body)
         finally:
-            store._db.close()
+            store.close()
         self._send(200, res, cookie)
 
     def _get(self, path, query, cookie):
@@ -460,7 +483,10 @@ def serve(config_dir: Path = DEFAULT_CONFIG_DIR, port: int = 8787, token_path: P
     token = load_token(token_path)
     srv = make_server(config_dir, "127.0.0.1", port, token=token)
     port = srv.server_address[1]
-    print(f"Dashboard: http://127.0.0.1:{port}/?token={token}")
+    if sys.stdout.isatty():
+        print(f"Dashboard: http://127.0.0.1:{port}/?token={token}")
+    else:
+        print(f"Dashboard: http://127.0.0.1:{port}/ (token trong {token_path})")
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
