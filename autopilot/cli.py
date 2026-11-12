@@ -218,7 +218,33 @@ def _rewind(snap, author: str):
                    comments=tuple(c for c in snap.comments if c.author != author and before(c.created_at)))
 
 
+def _scan_all(args) -> int:
+    """Quét lần lượt mọi dự án; một dự án lỗi không chặn dự án sau, nhưng mã thoát phản ánh lỗi."""
+    if args.project or args.pr is not None or args.claim or args.export_events:
+        print("--all không dùng chung với --project, --pr, --claim, --export-events.", file=sys.stderr)
+        return 2
+    cd = Path(args.config_dir) if args.config_dir else DEFAULT_CONFIG_DIR
+    names = list_projects(cd)
+    if not names:
+        return _err(f"Không có dự án nào trong {cd}.")
+    rc = 0
+    for name in names:
+        print(f"== {name} ==")
+        args.project, args.all = name, False
+        try:
+            rc |= cmd_scan(args)
+        except _Fail as e:
+            rc |= _err(str(e))
+        except (AuthError, CmdError) as e:
+            rc |= _err(f"Lỗi GitHub: {e}")
+        except (OSError, UnicodeDecodeError) as e:
+            rc |= _err(f"Lỗi đọc/ghi file: {e}")
+    return rc
+
+
 def cmd_scan(args) -> int:
+    if args.all:
+        return _scan_all(args)
     if (args.rewind or args.out) and not args.export_events:
         print("--rewind và --out chỉ dùng với --export-events.", file=sys.stderr)
         return 2
@@ -654,6 +680,7 @@ def build_parser() -> argparse.ArgumentParser:
     add("backlog", cmd_backlog)
     sp = add("scan", cmd_scan)
     sp.add_argument("--dry-run", action="store_true")
+    sp.add_argument("--all", action="store_true", help="quét mọi dự án trong thư mục cấu hình (dùng cho systemd)")
     sp.add_argument("--pr", type=int)
     sp.add_argument("--claim", action="store_true")
     sp.add_argument("--export-events", action="store_true")

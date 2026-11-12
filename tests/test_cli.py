@@ -559,3 +559,30 @@ def test_c2_targets_are_canonical_thread_ids(tmp_git_repo, tmp_path, proj, capsy
     assert run(capsys, ["reply", str(bid), "--pr-comment", "--file", str(f), *opts])[0] == 1
     assert run(capsys, ["reply", str(bid), "--thread", "PRRT_9", "--file", str(f), *opts])[0] == 0
     assert len(gh.posted) == 1
+
+
+def test_scan_all_iterates_projects(tmp_git_repo, tmp_path, capsys, monkeypatch):
+    cd = tmp_path / "cfg"
+    cd.mkdir()
+    for n in ("a", "b"):
+        (cd / f"{n}.toml").write_text(f'repo = "{tmp_git_repo}"\nauthor = "me"\ngh_user = "me"\n')
+    monkeypatch.setattr(cli, "_github", lambda cfg: FakeGitHub())
+    monkeypatch.setattr(cli, "_transport", lambda cfg, store: None)
+    monkeypatch.setattr(cli, "_notifier", lambda cfg, store: None)
+    seen = []
+
+    def fake_scan(cfg, *a, **kw):
+        seen.append(cfg.name)
+        if cfg.name == "a":
+            raise cli.CmdError("boom")
+        return router.ScanReport()
+
+    monkeypatch.setattr(router, "scan", fake_scan)
+    rc, out = run(capsys, ["scan", "--all", "--config-dir", str(cd)])
+    assert seen == ["a", "b"], out         # a failing project does not stop the next one
+    assert rc == 1 and "boom" in out    # but the exit code reports it
+
+
+def test_scan_all_rejects_pr_and_project(capsys, tmp_path):
+    assert run(capsys, ["scan", "--all", "--pr", "1", "--config-dir", str(tmp_path)])[0] == 2
+    assert run(capsys, ["scan", "--all", "--project", "x", "--config-dir", str(tmp_path)])[0] == 2

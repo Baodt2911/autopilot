@@ -1,0 +1,10 @@
+[Unit]
+Description=Autopilot: dashboard web
+
+[Service]
+ExecStart=%h/.claude/scripts/autopilot/.venv/bin/autopilot web
+Restart=on-failure
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+
+[Install]
+WantedBy=default.target

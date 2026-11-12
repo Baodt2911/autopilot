@@ -1,0 +1,7 @@
+[Unit]
+Description=Autopilot: quét PR và điều phối worker (một lượt)
+
+[Service]
+Type=oneshot
+ExecStart=%h/.claude/scripts/autopilot/.venv/bin/autopilot scan --all
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
