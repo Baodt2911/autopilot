@@ -12,7 +12,7 @@ mà không treo. `git push` và `rm` bị chặn bằng `--disallowedTools`, ti�
 
 Ba điều bất ngờ, ảnh hưởng thẳng tới Task 8:
 
-1. **`is_error` vẫn `false` khi lệnh bị từ chối quyền.** Exit code 0, `subtype: "success"`. Chỉ `permission_denials` (mảng không rỗng) cho biết lượt kẹt. Task 8 phải coi `permission_denials` không rỗng là lượt chưa hoàn thành.
+1. **`is_error` vẫn `false` khi lệnh bị từ chối quyền.** Exit code 0, `subtype: "success"`. Chỉ `permission_denials` (mảng không rỗng) cho biết lượt kẹt. Task 8 phải coi `permission_denials` có mục ngoài `disallowed_tools` là lượt chưa hoàn thành.
 2. **Hook RTK của owner chạy ở `-p` và viết lại lệnh** (`git add x.txt` thành `rtk git add x.txt`). Luật `Bash(git add:*)` không khớp lệnh đã viết lại, nên lượt bị kẹt. Phải cho phép cả dạng `rtk ...` (hoặc tắt hook cho worker).
 3. **Ghi file dưới `~/.claude/` bị coi là vị trí nhạy cảm** và bị chặn ở `acceptEdits`. Worktree thật nằm ở `~/Projects/MHT/iviettien/.worktrees/...` nên không bị, chỉ là hiện tượng của worktree thử đặt trong `~/.claude/scripts/`.
 
@@ -24,7 +24,14 @@ claude -p "Reply with exactly: ACK t1" --session-id $SID --model claude-sonnet-5
 claude -p "What token did I ask you to reply with before? Reply with it only." --resume $SID --model claude-sonnet-5-5 --output-format json > t2.json
 ```
 
-Exit code cả hai: `0`. `session_id` của t2 **bằng** `$SID`. t2 trả `t1` (model rút gọn "ACK t1" thành token `t1`, tức là nhớ được lượt trước).
+Exit code cả hai: `0`. `session_id` của t2 **bằng** `$SID`. t2 **không** trả đúng "ACK t1": trường `result` của t2 là chính xác `"t1"` (không có "ACK"). Đây là lệch so với yêu cầu của brief; ngữ cảnh vẫn được giữ (model biết token liên quan tới lượt trước), và được xác nhận chắc hơn bằng mã `PELICAN-42` bên dưới. Tiêu chí "giữ ngữ cảnh" nên dựa vào phép thử mã `PELICAN-42`, không phải khớp chính xác chuỗi.
+
+JSON thô của t1 và t2 (rút gọn còn các khóa `type`, `subtype`, `is_error`, `session_id`, `result`, `total_cost_usd`, `permission_denials`, `num_turns`):
+
+```json
+t1: {"type":"result","subtype":"success","is_error":false,"session_id":"6dbb9fdf-7dcf-440e-b533-07772b5ff9a6","result":"ACK t1","total_cost_usd":0.08890150000000001,"permission_denials":[],"num_turns":1}
+t2: {"type":"result","subtype":"success","is_error":false,"session_id":"6dbb9fdf-7dcf-440e-b533-07772b5ff9a6","result":"t1","total_cost_usd":0.1647499,"permission_denials":[],"num_turns":1}
+```
 Để chắc chắn, ở worktree thứ hai tôi nhờ nhớ mã `PELICAN-42` ở lượt 1, các lượt `--resume` sau (kể cả sau khi kill, bước 5) đều trả đúng `PELICAN-42`. Ngữ cảnh được giữ.
 
 Trường JSON của t1 (kiểu `result`, đủ bộ):
@@ -64,11 +71,18 @@ Mọi lệnh có `</dev/null` (không treo chờ stdin). Chạy ở worktree th�
 | 4.2 | `--permission-mode auto` + cùng `--allowedTools` | **Chạy trọn**: tạo file, add, echo, commit. `DONE`, 7 lượt, `permission_denials: []`. |
 | 4.3 | `--permission-mode acceptEdits --allowedTools "Bash(git add:*)" "Bash(git commit:*)" "Bash(echo:*)" "Bash(rtk git add:*)" "Bash(rtk git commit:*)" "Bash(rtk echo:*)" "Bash(autopilot:*)" "Bash(rtk autopilot:*)" Edit Write Read` | **Chạy trọn**: commit `spike2` tạo ra, `permission_denials: []`, 5 lượt. Đây là tổ hợp hẹp nhất. |
 | 4.4 (chặn) | `--permission-mode auto --disallowedTools "Bash(git push:*)" "Bash(rm:*)" "Bash(rtk git push:*)" "Bash(rtk rm:*)"`, yêu cầu `git push /tmp/nonexistent-remote HEAD` và `rm -rf /tmp/x` | Cả hai bị từ chối, `permission_denials` có 2 mục, tiến trình thoát bình thường, exit 0. (Dùng đích push giả để an toàn.) |
+| 4.5 (vòng sửa 1: bảng đầy đủ dưới `acceptEdits`) | `--permission-mode acceptEdits --allowedTools Edit Write Read "Bash(git add:*)" "Bash(git commit:*)" "Bash(git status:*)" "Bash(git diff:*)" "Bash(echo:*)" "Bash(autopilot:*)" "Bash(pnpm test:*)"` + toàn bộ dạng `rtk` tương ứng, `--disallowedTools "Bash(git push:*)" "Bash(rtk git push:*)" "Bash(rm:*)" "Bash(rtk rm:*)"`; yêu cầu (a) `git status`, (b) tạo `w.txt`, `git add`, `git commit`, (c) `git push /tmp/nonexistent-remote HEAD`, (d) `rm z.txt` | **Không treo** (6,9 giây, exit 0). (a) chạy, (b) commit `9ee2de0` tạo ra, (c) và (d) bị từ chối, `z.txt` còn nguyên. `permission_denials` có đúng 2 mục (`rtk git push /tmp/nonexistent-remote HEAD`, `rm z.txt`). |
 
 Ghi chú:
 
 - Tổ hợp hẹp nhất vừa đủ là **4.3**: `acceptEdits` + allowlist, thêm dạng `rtk` vì hook của owner. `auto` cũng chạy nhưng rộng hơn (để classifier tự quyết), không cần cho worker; giữ làm phương án dự phòng.
-- 4.4 chạy ở `auto`, chưa chạy riêng ở `acceptEdits`. `--disallowedTools` là luật cấm độc lập chế độ quyền nên coi là áp dụng chung, nhưng Task 8 nên thêm một kiểm thử tích hợp nhỏ.
+- 4.5 đã chạy riêng ở `acceptEdits` với bảng đầy đủ: luật cấm áp dụng ở chế độ này (xem JSON dưới). Lưu ý: ở 4.5 `permission_denials` không rỗng **do luật cấm cố ý chặn**, tức không phải lượt kẹt. Router phân biệt bằng nội dung: mục bị từ chối khớp `disallowed_tools` (git push, rm) là bình thường; mục khác (ví dụ lệnh trong danh sách cho phép nhưng bị chặn do thiếu dạng `rtk`) là kẹt.
+
+JSON thô của 4.5 (rút gọn):
+
+```json
+{"type":"result","subtype":"success","is_error":false,"session_id":"70d2b6ca-1f29-4c59-b4e6-8dbb6ebad9e4","result":"(a) git status: ran. (b) commit: worked, 9ee2de0 \"spike3\". (c) git push: denied by the permission system. (d) rm z.txt: denied, z.txt still there.","total_cost_usd":0.0915148,"permission_denials":[{"tool_name":"Bash","tool_use_id":"toolu_019xCaDmBAG4d1ZcSpS5nwfp","tool_input":{"command":"rtk git push /tmp/nonexistent-remote HEAD"}},{"tool_name":"Bash","tool_use_id":"toolu_01JGgrHaRpmqcFochBbkxTSM","tool_input":{"command":"rm z.txt"}}],"num_turns":5}
+```
 - Chế độ `auto` có classifier riêng (lệnh `git reset --hard` của chính tôi trong công cụ Bash của phiên điều khiển từng bị chặn bởi classifier kiểu này; không phải lượt `claude -p`). Worker dùng `acceptEdits` thì không có lớp đó, vì vậy `disallowed_tools` phải đủ chặt.
 - `Bash(autopilot:*)` đã nằm trong allowlist nhưng spike không có lệnh `autopilot` thật để chạy. Chưa kiểm chứng việc gọi nó, chỉ kiểm chứng cú pháp luật.
 - **Hook**: `~/.claude/settings.json` có hook `SessionStart`, `UserPromptSubmit` (Orca `claude-hook.cmd`, `codegraph prompt-hook`) và (suy ra từ việc lệnh bị viết lại) hook RTK trước `Bash`. Ở `-p`, các hook **đều chạy** (RTK viết lại lệnh, thấy trong `permission_denials[].tool_input.command`). Không hook nào làm hỏng stdout JSON: `t1.json` đến `t5b.json` đều parse được bằng `json.load`.
@@ -91,11 +105,9 @@ Phân biệt tiến trình router tạo với tiến trình khác: router lưu *
 Khi không có lượt nào, các tiến trình `claude` sẵn có của owner (chỉ đọc):
 
 ```
-2088811 cwd=/home/mht/Projects/MHT/iviettien                       claude --plugin-dir ~/.config/orca/claude-agent-view/<hash>/orca-agent-view --effort medium --resume ...
-2089039 cwd=/home/mht/Projects/MHT/iviettien/.worktrees/int-a2     claude --plugin-dir ... --dangerously-skip-permissions ...
-2100343 cwd=.../iviettien/.worktrees/int-d                         claude --plugin-dir ... --dangerously-skip-permissions ...
-2110625 cwd=.../.worktrees/int-c2    2133753 cwd=.../.worktrees/int-e    2148111 cwd=.../.worktrees/int-a2
-2159390 cwd=.../.worktrees/int-b2    2238857 cwd=.../.worktrees/int-b3   3938383 cwd=/home/mht   claude (phiên này)
+2089039 cwd=/home/mht/Projects/MHT/iviettien/.worktrees/int-a2  claude --plugin-dir ~/.config/orca/claude-agent-view/<hash>/orca-agent-view --dangerously-skip-permissions ...
+2100343 cwd=/home/mht/Projects/MHT/iviettien/.worktrees/int-d   claude --plugin-dir ... --dangerously-skip-permissions ...
+(còn int-c2, int-e, int-b2, int-b3 và một session ở thư mục gốc iviettien: cùng dạng; chỉ đọc, không đụng tới)
 ```
 
 Kết luận cho câu 5 của spec mục 14: **đọc `/proc/<pid>/cwd` nhận ra được** session owner (kể cả mở trong Orca, cwd là đúng thư mục worktree). Lọc nhiễu:
@@ -124,7 +136,19 @@ Chỉ đọc transcript cũ. `grep -F "hit your"` trong `~/.claude/projects/` c�
 
 ## Bước 7: dọn dẹp
 
-Xóa `../autopilot-spike` và `spike-transport`, cùng worktree thử thứ hai và nhánh `spike-transport-b`. Kiểm tra `git worktree list` không còn mục spike (xem báo cáo).
+Xóa `../autopilot-spike` và `spike-transport`, cùng worktree thử thứ hai và nhánh `spike-transport-b`. Kết quả thực tế sau khi dọn:
+
+```
+$ git branch -D spike-transport spike-transport-b
+Deleted branch spike-transport (was b443605).
+Deleted branch spike-transport-b (was bf12f18).
+$ git worktree list
+/home/mht/.claude/scripts/autopilot  b443605 [feat/phase-1-2]
+$ git branch --list 'spike*'
+(trống)
+```
+
+Vòng sửa 1 dùng thêm worktree thử thứ ba (`spike-transport-c`, ngoài `~/.claude/`), đã xóa cùng nhánh; `git worktree list` sau đó chỉ còn `/home/mht/.claude/scripts/autopilot  c95d61d [feat/phase-1-2]`, `git branch --list 'spike*'` trống.
 
 ## Lệnh chốt cho Task 8
 
@@ -134,14 +158,14 @@ Xóa `../autopilot-spike` và `spike-transport`, cùng worktree thử thứ hai 
 | `deliver` (argv, cwd = worktree) | `["claude","-p",<chỉ thị>,"--resume",<uuid>,"--model","claude-sonnet-5-5","--output-format","json","--permission-mode",<permission_mode>,"--allowedTools",*<allowed_tools>,"--disallowedTools",*<disallowed_tools>]` |
 | Cách chạy | `subprocess.Popen(argv, cwd=worktree, stdin=DEVNULL, stdout=<file t.json>, stderr=<file t.err>, start_new_session=True)`; bọc `timeout 300`-tương đương trong router (ví dụ `["timeout","300",*argv]`) hoặc tự canh giờ; lưu pgid = pid. Luôn `stdin=DEVNULL`. |
 | `[worker] permission_mode` | `acceptEdits` |
-| `[worker] allowed_tools` | `Edit`, `Write`, `Read`, `Bash(git add:*)`, `Bash(git commit:*)`, `Bash(git status:*)`, `Bash(git diff:*)`, `Bash(echo:*)`, `Bash(autopilot:*)`, cùng toàn bộ dạng `rtk` tương ứng (`Bash(rtk git add:*)`, `Bash(rtk git commit:*)`, `Bash(rtk echo:*)`, `Bash(rtk autopilot:*)`, ...), và lệnh test của dự án (thí dụ `Bash(pnpm test:*)`, `Bash(rtk pnpm test:*)`). Lý do dạng `rtk`: hook của owner viết lại lệnh. |
+| `[worker] allowed_tools` | Đã kiểm chứng dưới `acceptEdits` (4.3 và 4.5): `Edit`, `Write`, `Read`, `Bash(rtk git add:*)`, `Bash(rtk git commit:*)`, `Bash(rtk git status:*)` (4.5), `Bash(rtk echo:*)` (4.3). `Bash(git add:*)`, `Bash(git commit:*)`, `Bash(echo:*)` (dạng không `rtk`) đã khớp ở 4.2 dưới `auto`; dưới `acceptEdits` dạng không `rtk` không khớp vì hook viết lại lệnh. **Chưa kiểm chứng (có trong allowlist 4.3/4.5 nhưng không có lệnh nào dùng tới):** `Bash(git status:*)`, `Bash(git diff:*)`, `Bash(rtk git diff:*)`, `Bash(autopilot:*)`, `Bash(rtk autopilot:*)` (chỉ kiểm tra cú pháp luật, không có lệnh `autopilot` thật), `Bash(pnpm test:*)`, `Bash(rtk pnpm test:*)` (chưa kiểm chứng; lệnh test thật của dự án chưa biết). Cần thêm các dạng `rtk` tương ứng cho mọi mục vì hook của owner. |
 | `[worker] disallowed_tools` | `Bash(git push:*)`, `Bash(rtk git push:*)`, `Bash(rm:*)`, `Bash(rtk rm:*)` (thêm `Bash(git reset --hard:*)`, `Bash(git push --force:*)` tùy chọn). `git push` luôn trong danh sách này; push chỉ qua `autopilot push`. |
-| Dự phòng nếu `acceptEdits` vẫn kẹt | `--permission-mode auto` (đã kiểm chứng chạy trọn với cùng allowlist). |
-| Đọc kết quả | `json.load(stdout)`. Lượt **thành công** khi: parse được, `type=="result"`, `subtype=="success"`, `is_error==false`, `permission_denials==[]`, `result` không rỗng. Lỗi khi `is_error==true`, hoặc `subtype!="success"`, hoặc `api_error_status!=null`. **Lượt kẹt** (cần chạy lại / báo): `permission_denials` không rỗng dù `is_error==false`. stdout rỗng hoặc không parse được (bị kill, crash) là "chưa có result". |
+| Dự phòng nếu `acceptEdits` vẫn kẹt | `--permission-mode auto`. Đã kiểm chứng chạy trọn ở 4.2 với allowlist **nhỏ hơn bảng này**: `Edit Write Read "Bash(git add:*)" "Bash(git commit:*)" "Bash(echo:*)"` (không có `rtk`, `autopilot`, `status`, `diff`, `pnpm test`). Với allowlist đầy đủ ở `auto` thì chưa chạy riêng.
+| Đọc kết quả | `json.load(stdout)`. Lượt **thành công** khi: parse được, `type=="result"`, `subtype=="success"`, `is_error==false`, không có mục `permission_denials` nào ngoài các mục khớp `disallowed_tools`, `result` không rỗng. Lỗi khi `is_error==true`, hoặc `subtype!="success"`, hoặc `api_error_status!=null`. **Lượt kẹt** (cần chạy lại / báo): `permission_denials` có mục KHÔNG khớp `disallowed_tools` dù `is_error==false` (mục khớp luật cấm là bình thường, xem 4.5). stdout rỗng hoặc không parse được (bị kill, crash) là "chưa có result". |
 | Trường session id | `session_id` (luôn bằng uuid truyền qua `--session-id` / `--resume`). Văn bản trả lời: `result`. Chi phí: `total_cost_usd`. |
 | Tìm transcript | `~/.claude/projects/<cwd>/<session_id>.jsonl`, với `<cwd>` = đường dẫn tuyệt đối của worktree (đã `realpath`) thay mọi `/` và `.` bằng `-`. Thí dụ `/home/mht/Projects/MHT/iviettien/.worktrees/int-a2` thành `-home-mht-Projects-MHT-iviettien--worktrees-int-a2`. Ghi chú: cách mã hóa đã kiểm chứng trên spike và khớp các thư mục hiện có trong `~/.claude/projects/`. |
 | Phát hiện tiến trình `claude` khác trong worktree | Quét `/proc/[0-9]*`: lấy `argv0 = cmdline.split("\0")[0]`, giữ khi `basename(argv0)=="claude"`; `cwd = readlink(/proc/pid/cwd)`; giữ khi `cwd == wt` hoặc `cwd.startswith(wt + "/")`; loại pid có pgid là pgid router đang giữ (hoặc pid con của router); loại claude-mem observer (argv chứa `--input-format stream-json`). Kết quả không rỗng: `owner_busy`. Không bao giờ gửi tín hiệu tới các tiến trình này. |
 | Dừng một lượt treo | `os.killpg(pgid, SIGTERM)` (chỉ pgid do router tạo); sau đó `--resume` vẫn dùng được. Stdout sẽ rỗng. |
 | Hết usage limit | Quét `result`, stderr và dòng cuối transcript, regex `hit your .*limit.*resets (\d{1,2}(:\d{2})?\s*[ap]m) \(([^)]+)\)`. Chưa kiểm chứng nguồn nào xuất hiện ở `-p`. |
 
-Số lượt `claude -p` đã chạy: 10 (t1, t2, t3, t3a, t3b, t4a, t4b, t4c, t5 [bị kill], t5b), tất cả Sonnet.
+Số lượt `claude -p` đã chạy: 11 (t1, t2, t3, t3a, t3b, t4a, t4b, t4c, t5 [bị kill], t5b, t6 ở vòng sửa 1), tất cả Sonnet.
