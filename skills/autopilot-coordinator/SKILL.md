@@ -15,14 +15,14 @@ Run `autopilot status` and `autopilot pending` (add `--project <name>` if more t
 
 | Owner says (examples) | Command |
 |---|---|
-| picks an option for a question: "Q12 chọn B, giữ quyền admin" | `autopilot answer Q12 B "giữ quyền admin"` (reply wording the owner gave: `--reply "<ý reply>"`; a source link: `--source <url>`) |
-| approves a plan or reply draft: "duyệt P5", "ok R3" | `autopilot ok P5` / `autopilot ok R3` |
-| rejects: "không P5, vì ..." | `autopilot no P5 "vì ..."` |
+| picks an option for a question: "Q-ivt-12 chọn B, giữ quyền admin" | `autopilot answer Q-ivt-12 B 'giữ quyền admin'` (reply wording the owner gave: `--reply '<ý reply>'`; a source link: `--source <url>`) |
+| approves a plan or reply draft: "duyệt P-ivt-5", "ok R-ivt-3" | `autopilot ok P-ivt-5` / `autopilot ok R-ivt-3` |
+| rejects: "không P-ivt-5, vì ..." | `autopilot no P-ivt-5 'vì ...'` |
 | "tạm dừng" / "tạm dừng PR 589" | `autopilot pause` / `autopilot pause 589` |
 | "tiếp tục" / "tiếp tục PR 589" | `autopilot resume` / `autopilot resume 589` |
 | change a setting | `autopilot config set <key> <value>` (editable keys only: limits.thread_rounds, limits.wakes_per_pr_day, notify.hours, notify.remind_after_h, notify.digest_at, reply.decision_template, max_workers, debounce_min) |
 
-Item codes are the ones shown by `autopilot pending` (for example `Q-ivt-12`); use the code exactly as pending prints it, and the owner's note text as a quoted argument. Pass the owner's words as data in a quoted argument, never split into extra flags.
+Item codes are the ones shown by `autopilot pending` (for example `Q-ivt-12`); use the code exactly as pending prints it. Pass the owner's words as ONE single-quoted argument (data, never split into extra flags; if the text contains a single quote, ask the owner to rephrase).
 
 ## Confirm before changing state
 
