@@ -6,13 +6,19 @@ import os
 import re
 import subprocess
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .config import Config
 from .models import Comment, PRSnapshot, Review, Thread
 
 FAIL_CONCLUSIONS = frozenset({"FAILURE", "TIMED_OUT", "CANCELLED"})
-PAGE = 100
+PAGE = 100  # continuation pages (single level, cheap)
+# Inline page sizes: GitHub rejects queries whose requested node count (product of
+# nested `first` values) exceeds 500k, so keep these small and drain the rest.
+SEARCH_FIRST = 10
+THREADS_FIRST = 25
+THREAD_COMMENTS_FIRST = 20
+LIST_FIRST = 50  # reviews, issue comments, files, check contexts
 
 
 class CmdError(Exception):
@@ -38,21 +44,21 @@ _ISSUE_COMMENT = """id author { login __typename } body createdAt updatedAt url"
 _PR_FIELDS = f"""
   id number title url isDraft state mergedAt
   headRefName headRefOid baseRefName baseRefOid mergeable reviewDecision
-  reviewThreads(first: {PAGE}) {{
-    nodes {{ id isResolved comments(first: {PAGE}) {{ nodes {{ {_REVIEW_COMMENT} }} {_PI} }} }}
+  reviewThreads(first: {THREADS_FIRST}) {{
+    nodes {{ id isResolved comments(first: {THREAD_COMMENTS_FIRST}) {{ nodes {{ {_REVIEW_COMMENT} }} {_PI} }} }}
     {_PI}
   }}
-  reviews(first: {PAGE}) {{ nodes {{ id author {{ login }} state submittedAt body url }} {_PI} }}
-  comments(first: {PAGE}) {{ nodes {{ {_ISSUE_COMMENT} }} {_PI} }}
-  files(first: {PAGE}) {{ nodes {{ path }} {_PI} }}
+  reviews(first: {LIST_FIRST}) {{ nodes {{ id author {{ login }} state submittedAt body url }} {_PI} }}
+  comments(first: {LIST_FIRST}) {{ nodes {{ {_ISSUE_COMMENT} }} {_PI} }}
+  files(first: {LIST_FIRST}) {{ nodes {{ path }} {_PI} }}
   commits(last: 1) {{ nodes {{ commit {{ statusCheckRollup {{
-    contexts(first: {PAGE}) {{ nodes {{ __typename ... on CheckRun {{ name conclusion }} }} }}
+    contexts(first: {LIST_FIRST}) {{ nodes {{ __typename ... on CheckRun {{ name conclusion }} }} }}
   }} }} }} }}
 """
 
 OPEN_PRS_QUERY = f"""
 query($q: String!, $cursor: String) {{
-  search(query: $q, type: ISSUE, first: 50, after: $cursor) {{
+  search(query: $q, type: ISSUE, first: {SEARCH_FIRST}, after: $cursor) {{
     nodes {{ ... on PullRequest {{ {_PR_FIELDS} }} }}
     {_PI}
   }}
@@ -67,7 +73,7 @@ query($owner: String!, $name: String!, $number: Int!) {{
 _THREADS_MORE = f"""
 query($id: ID!, $c: String) {{ node(id: $id) {{ ... on PullRequest {{
   reviewThreads(first: {PAGE}, after: $c) {{
-    nodes {{ id isResolved comments(first: {PAGE}) {{ nodes {{ {_REVIEW_COMMENT} }} {_PI} }} }} {_PI}
+    nodes {{ id isResolved comments(first: {THREAD_COMMENTS_FIRST}) {{ nodes {{ {_REVIEW_COMMENT} }} {_PI} }} }} {_PI}
   }} }} }} }}"""
 _THREAD_COMMENTS_MORE = f"""
 query($id: ID!, $c: String) {{ node(id: $id) {{ ... on PullRequestReviewThread {{
@@ -82,6 +88,9 @@ query($id: ID!, $c: String) {{ node(id: $id) {{ ... on PullRequest {{
 _FILES_MORE = f"""
 query($id: ID!, $c: String) {{ node(id: $id) {{ ... on PullRequest {{
   files(first: {PAGE}, after: $c) {{ nodes {{ path }} {_PI} }} }} }} }}"""
+
+
+_MIN_TS = datetime.min.replace(tzinfo=timezone.utc)
 
 
 def _ts(s: str | None) -> datetime | None:
@@ -103,7 +112,7 @@ def _comment(n: dict, thread_id: str | None = None) -> Comment:
 
 def _review(n: dict) -> Review:
     return Review(id=n["id"], author=_login(n.get("author")), state=n["state"],
-                  submitted_at=_ts(n.get("submittedAt")) or datetime.min, body=n.get("body") or "",
+                  submitted_at=_ts(n.get("submittedAt")) or _MIN_TS, body=n.get("body") or "",
                   url=n["url"])
 
 

@@ -4,6 +4,9 @@ from pathlib import Path
 import pytest
 
 from autopilot.config import Config
+import re
+
+from autopilot import github as gh_mod
 from autopilot.github import AuthError, CmdError, GitHub
 
 FIX = Path(__file__).parent / "fixtures"
@@ -14,14 +17,14 @@ def fx(name):
 
 
 def cfg():
-    return Config(name="t", repo=Path("/r"), author="author-x", gh_user="vyn-bao-do",
+    return Config(name="t", repo=Path("/r"), author="author-x", gh_user="owner-z",
                   limits={}, notify={}, reply={}, pr_rules={}, tests={}, worker={})
 
 
 class Fake:
     """Fake runner: routes by argv/variables, records (argv, env)."""
 
-    def __init__(self, search=None, node=None, repository=None, token="tok-vyn"):
+    def __init__(self, search=None, node=None, repository=None, token="tok-fake"):
         self.calls, self.search, self.node = [], search, node or {}
         self.repository, self.token = repository, token
 
@@ -61,10 +64,10 @@ def test_uses_token_of_gh_user_for_every_call(monkeypatch):
     gh.open_prs()
     gh.recently_closed([102])
     gh.post_comment(7, "hi")
-    assert f.calls[0][0] == ["gh", "auth", "token", "--user", "vyn-bao-do"]
+    assert f.calls[0][0] == ["gh", "auth", "token", "--user", "owner-z"]
     api = [c for c in f.calls if c[0][:2] == ["gh", "api"]]
     assert len(api) >= 4
-    assert all(env["GH_TOKEN"] == "tok-vyn" for _, env in api)
+    assert all(env["GH_TOKEN"] == "tok-fake" for _, env in api)
     assert sum(1 for c in f.calls if c[0][:3] == ["gh", "auth", "token"]) == 1
     assert all(isinstance(a, str) for c, _ in f.calls for a in c)
 
@@ -156,3 +159,33 @@ def test_post_comment_returns_url_and_body_is_single_arg():
     args = f.calls[-1][0]
     assert f"body={body}" in args
     assert GitHub(cfg(), f).post_issue_comment(7, "b").endswith("#issuecomment-9")
+
+
+def _node_budget(query: str) -> int:
+    """Sum over connections of the product of nested first/last values (GitHub's estimate)."""
+    stack, total, pos = [], 0, 0
+    for m in re.finditer(r"[{}]", query):
+        if m.group() == "{":
+            before = query[pos:m.start()]
+            n = re.search(r"\((?:[^()]*,\s*)?(?:first|last):\s*(\d+)[^()]*\)\s*$", before)
+            mult = int(n.group(1)) if n else 1
+            stack.append(mult)
+            if n:
+                p = 1
+                for x in stack:
+                    p *= x
+                total += p
+        else:
+            stack.pop()
+        pos = m.end()
+    return total
+
+
+def test_query_node_budget_under_limit():
+    for q in (gh_mod.OPEN_PRS_QUERY, gh_mod.PR_BY_NUMBER_QUERY):
+        assert 0 < _node_budget(q) < 500_000
+    for q in (gh_mod._THREADS_MORE, gh_mod._THREAD_COMMENTS_MORE, gh_mod._REVIEWS_MORE,
+              gh_mod._COMMENTS_MORE, gh_mod._FILES_MORE):
+        assert _node_budget(q) < 500_000
+    # sanity: the estimator sees nesting (search 10 x threads 25 x comments 20 = 5000 alone)
+    assert _node_budget(gh_mod.OPEN_PRS_QUERY) >= 10 * 25 * 20
