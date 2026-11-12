@@ -1,7 +1,7 @@
 import json
 import os
 import fcntl
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import pytest
 
@@ -35,17 +35,21 @@ class Fx:
                                    projects_root=self.projects, killpg=lambda g, s: self.calls.append(("kill", g, s)))
         self.next_pid = 4242
 
-    def spawn(self, argv, cwd, out, err, pass_fds=()):
+    def spawn(self, argv, cwd, out, err):
         self.calls.append((argv, cwd, out, err))
         pid = self.next_pid
         self.next_pid += 1
         self.alive(pid)
         return pid
 
-    def alive(self, pid):
-        (self.proc / str(pid)).mkdir(exist_ok=True)
+    def alive(self, pid, start="1000"):
+        d = self.proc / str(pid)
+        d.mkdir(exist_ok=True)
+        (d / "stat").write_text(f"{pid} (claude) S 1 {pid} " + "0 " * 16 + f"{start} 0\n")
 
     def die(self, pid):
+        for f in (self.proc / str(pid)).iterdir():
+            f.unlink()
         (self.proc / str(pid)).rmdir()
 
     def argv(self, i=-1):
@@ -92,7 +96,6 @@ def test_deliver_resumes_same_session(fx):
 
 
 def test_worker_flags_come_from_config(fx):
-    fx.cfg.worker["claude_bin"]  # sanity
     fx.t.start_worker(fx.wt, "p", 1)
     a = fx.argv()
     assert a[a.index("--permission-mode") + 1] == "acceptEdits"
@@ -113,7 +116,7 @@ def test_second_spawn_on_same_worktree_raises_busy(fx):
     assert len(fx.calls) == 1
 
 
-def test_held_flock_raises_busy(fx):
+def test_concurrently_held_critical_section_lock_raises_busy(fx):
     lock = fx.t.lock_path(fx.wt)
     lock.parent.mkdir(parents=True)
     fd = os.open(lock, os.O_CREAT | os.O_RDWR)
@@ -146,10 +149,6 @@ def test_status_states(fx):
     assert st.state == "dead" and st.session == sid
     fx.store.transition(b, "waiting_owner", T0)
     assert fx.t.status(fx.wt).state == "waiting"
-    fx.store.transition(b, "delivered", T0)
-    fx.store.transition(b, "acked", T0)
-    fx.store.transition(b, "in_progress", T0)
-    fx.store.transition(b, "done", T0) if False else None
     b2 = fx.batch("done")
     fx.store.kv_set(f"run:{fx.wt.path}", json.dumps({**json.loads(fx.store.kv_get(f"run:{fx.wt.path}")), "batch": b2}))
     _write_out(fx, OK)
@@ -168,8 +167,52 @@ def test_limit_in_transcript_tail(fx):
     _write_out(fx, "")
     p = fx.t.transcript_path(fx.wt, sid)
     p.parent.mkdir(parents=True)
-    p.write_text('{"text":"You\'ve hit your 5-hour limit \\u00b7 resets 6:30pm (Asia/Bangkok)"}\n')
+    line = '{"timestamp":"%s","text":"You\'ve hit your 5-hour limit \\u00b7 resets 6:30pm (Asia/Bangkok)"}\n'
+    p.write_text(line % "2999-01-01T00:00:00Z")
     assert fx.t.status(fx.wt).state == "limited"
+
+
+def test_old_limit_text_in_transcript_ignored(fx):
+    b = fx.batch("in_progress")
+    sid = fx.t.start_worker(fx.wt, "p", b)
+    fx.die(4242)
+    _write_out(fx, "")
+    p = fx.t.transcript_path(fx.wt, sid)
+    p.parent.mkdir(parents=True)
+    old = '{"timestamp":"2000-01-01T00:00:00Z","text":"You\'ve hit your 5-hour limit \\u00b7 resets 6:30pm (Asia/Bangkok)"}\n'
+    undated = '{"text":"You\'ve hit your 5-hour limit \\u00b7 resets 6:30pm (Asia/Bangkok)"}\n'
+    p.write_text(old + undated)
+    assert fx.t.status(fx.wt).state == "dead"
+
+
+def test_pid_reuse_not_treated_alive_and_not_killed(fx):
+    b = fx.batch("in_progress")
+    sid = fx.t.start_worker(fx.wt, "p", b)
+    assert fx.t.status(fx.wt).state == "working"
+    fx.alive(4242, start="9999")  # same pid, different process
+    assert fx.t.status(fx.wt).state == "dead"
+    fx.t.stop_worker(fx.wt, sid)
+    assert not any(c[0] == "kill" for c in fx.calls)
+
+
+def test_spawn_failure_raises_transport_error_without_bumping_attempt(fx):
+    from autopilot.transport import TransportError
+
+    def boom(*a):
+        raise FileNotFoundError("claude")
+
+    fx.t.spawn = boom
+    with pytest.raises(TransportError):
+        fx.t.start_worker(fx.wt, "p", 1)
+    assert fx.store.kv_get("attempt:1") is None and fx.store.kv_get(f"run:{fx.wt.path}") is None
+
+
+def test_forbidden_match_needs_word_boundary(fx):
+    from autopilot.transport.headless import _matches
+
+    pat = ["Bash(git push:*)"]
+    assert _matches({"tool_name": "Bash", "tool_input": {"command": "git push"}}, pat)
+    assert _matches({"tool_name": "Bash", "tool_input": {"command": "git pushall"}}, pat) is None
 
 
 def test_forbidden_denial_is_completed_turn_stray_denial_is_not(fx):
@@ -225,3 +268,18 @@ def test_get_transport_headless_default_orca_not_implemented(fx):
     import dataclasses
     with pytest.raises(NotImplementedError):
         get_transport(dataclasses.replace(fx.cfg, transport="orca"), fx.store)
+
+
+def test_nested_worktree_process_belongs_to_deepest(fx, tmp_path):
+    root = Worktree("main", str(tmp_path / "r"))
+    child = Worktree("feat/a", str(tmp_path / "r" / ".worktrees" / "a"))
+    os.makedirs(child.path + "/src")
+    fx.store.kv_set(f"session:{root.path}", "s")
+    fx.store.kv_set(f"session:{child.path}", "s")
+    d = fx.proc / "50"
+    d.mkdir()
+    (d / "cmdline").write_bytes(b"/usr/bin/claude\0")
+    os.symlink(child.path + "/src", d / "cwd")
+    fx.t.set_worktrees([root.path, child.path])
+    assert fx.t.status(child).state == "owner_busy"
+    assert fx.t.status(root).state == "idle"

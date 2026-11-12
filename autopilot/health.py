@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 
 from .models import Worktree
 from .store import InvalidTransition, Store
+from .transport import TransportError
 
 LIMIT_RE = re.compile(
     r"hit your .*?limit.*?resets\s+(\d{1,2})(?::(\d{2}))?\s*([ap]m)\s*\(([^)]+)\)",
@@ -67,24 +68,28 @@ def check_workers(store: Store, transport, worktrees_with_batches: dict[str, tup
     """
     actions: list[str] = []
     for branch, (wt, session) in worktrees_with_batches.items():
-        st = transport.status(wt)
+        st = transport.status(wt, now)
         run = _run_record(store, wt)
         batch = run["batch"] if run else None
 
-        if hasattr(transport, "forbidden_ops") and run:
+        if run:
             for tool in transport.forbidden_ops(wt):
                 if store.kv_get(f"forbidden-alert:{wt.path}:{tool}") != run["started_at"]:
                     store.kv_set(f"forbidden-alert:{wt.path}:{tool}", run["started_at"])
                     actions.append(f"alert: worker tried forbidden op: {tool} ({branch})")
 
-        if st.state == "limited":
-            until = parse_limit(transport.read_text(wt, session), now) or now + timedelta(hours=5)
-            store.kv_set("limit_until", until.isoformat())
-            moved = []
-            for b in store.batches(status=("in_progress", "delivered")):
-                if _try(store, b["id"], "waiting_limit", now):
-                    moved.append(b["id"])
-            actions.append(f"usage limit hit ({branch}): paused batches {moved} until {until.isoformat()}")
+        if st.state == "limited" and run:
+            key = f"limit-run:{wt.path}"
+            armed = store.kv_get(key)
+            if not armed or json.loads(armed)["run"] != run["started_at"]:  # arm once per run
+                until = parse_limit(transport.read_text(wt, session), now) or now + timedelta(hours=5)
+                store.kv_set(key, json.dumps({"run": run["started_at"], "until": until.isoformat()}))
+                store.kv_set("limit_until", until.isoformat())
+                moved = []
+                for b in store.batches(status=("in_progress", "delivered")):
+                    if _try(store, b["id"], "waiting_limit", now):
+                        moved.append(b["id"])
+                actions.append(f"usage limit hit ({branch}): paused batches {moved} until {until.isoformat()}")
         elif st.state == "dead" and batch is not None:
             key = f"reruns:{batch}"
             reruns = int(store.kv_get(key) or 0)
@@ -94,6 +99,9 @@ def check_workers(store: Store, transport, worktrees_with_batches: dict[str, tup
             else:
                 try:
                     transport.deliver(wt, session, run["prompt"], batch)
+                except TransportError as e:
+                    actions.append(f"alert: re-run of batch {batch} failed ({branch}): {e}")
+                    continue
                 except Exception as e:  # WorkerBusy etc.: try again next pass
                     actions.append(f"re-run of batch {batch} skipped ({branch}): {e}")
                     continue
@@ -103,6 +111,9 @@ def check_workers(store: Store, transport, worktrees_with_batches: dict[str, tup
         elif st.state == "working" and st.updated_at is not None and run:
             idle = now - st.updated_at
             if idle >= STALE_STOP:
+                if store.kv_get(f"stale-stop:{wt.path}") == run["started_at"]:
+                    continue
+                store.kv_set(f"stale-stop:{wt.path}", run["started_at"])
                 transport.stop_worker(wt, session)
                 if batch is not None:
                     _try(store, batch, "escalated", now)

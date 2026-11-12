@@ -1,6 +1,7 @@
 """Transport protocol: how the router runs Claude Code workers."""
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Protocol
 
 from ..config import Config
@@ -8,8 +9,16 @@ from ..models import WorkerStatus, Worktree
 from ..store import Store
 
 
+class WorkerBusy(Exception):
+    pass
+
+
+class TransportError(Exception):
+    pass
+
+
 class Transport(Protocol):
-    def status(self, wt: Worktree) -> WorkerStatus: ...
+    def status(self, wt: Worktree, now: datetime | None = None) -> WorkerStatus: ...
 
     def start_worker(self, wt: Worktree, prompt: str, batch_id: int) -> str:
         """Start a new session, return its id."""
@@ -22,6 +31,12 @@ class Transport(Protocol):
 
     def read_text(self, wt: Worktree, session: str) -> str:
         """Last turn's result JSON + stderr + last 50 transcript lines."""
+
+    def forbidden_ops(self, wt: Worktree) -> list[str]:
+        """Disallowed tools the last finished turn tried to use."""
+
+    def set_worktrees(self, paths) -> None:
+        """Tell the transport every known worktree path (ownership of foreign processes)."""
 
 
 def get_transport(cfg: Config, store: Store) -> Transport:

@@ -1,12 +1,9 @@
 import json
-import os
 from datetime import datetime, timedelta, timezone
 
 import pytest
 
 from autopilot.health import check_workers, limit_active, parse_limit
-from autopilot.models import Worktree
-from autopilot.store import Store
 from test_transport_headless import Fx, OK, T0
 
 BKK = timezone(timedelta(hours=7))
@@ -100,3 +97,35 @@ def test_forbidden_op_alert_once(fx):
     out = check_workers(fx.store, fx.t, wtb, T0)
     assert out == ["alert: worker tried forbidden op: Bash(git push:*) (feat/x)"]
     assert check_workers(fx.store, fx.t, wtb, T0) == []
+
+
+def test_limit_pause_ends_after_reset(fx):
+    b = fx.batch("in_progress")
+    sid = fx.t.start_worker(fx.wt, "p", b)
+    fx.die(4242)
+    open(run_rec(fx)["out"], "w").write("")
+    open(run_rec(fx)["err"], "w").write(TXT)
+    wtb = {"feat/x": (fx.wt, sid)}
+    t1 = datetime(2026, 11, 11, 19, 0, tzinfo=BKK)
+    check_workers(fx.store, fx.t, wtb, t1)
+    until = limit_active(fx.store, t1)
+    assert until == datetime(2026, 11, 11, 19, 25, tzinfo=BKK)
+    t2 = datetime(2026, 11, 11, 19, 27, tzinfo=BKK)
+    assert fx.t.status(fx.wt, t2).state != "limited"
+    out = check_workers(fx.store, fx.t, wtb, t2)
+    assert limit_active(fx.store, t2) is None
+    assert datetime.fromisoformat(fx.store.kv_get("limit_until")) == until  # not re-armed
+    assert not any("usage limit" in o for o in out)
+
+
+def test_spawn_failure_on_rerun_alerts(fx):
+    b = fx.batch("in_progress")
+    sid = fx.t.start_worker(fx.wt, "p", b)
+    fx.die(4242)
+
+    def boom(*a):
+        raise FileNotFoundError("claude")
+
+    fx.t.spawn = boom
+    out = check_workers(fx.store, fx.t, {"feat/x": (fx.wt, sid)}, T0)
+    assert out[0].startswith("alert:") and fx.store.kv_get(f"reruns:{b}") is None

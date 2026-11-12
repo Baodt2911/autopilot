@@ -16,21 +16,18 @@ from ..config import Config
 from ..health import parse_limit
 from ..models import WorkerStatus, Worktree
 from ..store import Store
+from . import TransportError, WorkerBusy  # noqa: F401  (re-exported)
 
 _RESULT_STATUSES = frozenset({"done", "waiting_owner"})
 _ACTIVE_STATUSES = frozenset({"delivered", "acked", "in_progress"})
 TRANSCRIPT_TAIL_LINES = 50
 
 
-class WorkerBusy(Exception):
-    pass
-
-
-def spawn_detached(argv: list[str], cwd: str, out: Path, err: Path, pass_fds: tuple[int, ...] = ()) -> int:
+def spawn_detached(argv: list[str], cwd: str, out: Path, err: Path) -> int:
     """Start argv detached (own session) in cwd; stdout/stderr to files. Returns pid (== pgid)."""
     with open(out, "wb") as fo, open(err, "wb") as fe:
         p = subprocess.Popen(argv, cwd=cwd, stdin=subprocess.DEVNULL, stdout=fo, stderr=fe,
-                             start_new_session=True, pass_fds=pass_fds)
+                             start_new_session=True)
     return p.pid
 
 
@@ -48,7 +45,7 @@ def _matches(denial: dict, patterns: list[str]) -> str | None:
         if not inner:
             return pat
         prefix = inner.rstrip(")").removesuffix(":*").removesuffix("*")
-        if tool != "Bash" or cmd.startswith(prefix):
+        if tool != "Bash" or cmd == prefix or cmd.startswith(prefix + " "):
             return pat
     return None
 
@@ -91,6 +88,11 @@ class HeadlessTransport:
                  killpg: Callable[[int, int], None] = os.killpg):
         self.cfg, self.store, self.spawn = cfg, store, spawn
         self.proc_root, self.projects_root, self.killpg = Path(proc_root), Path(projects_root), killpg
+        self.known_paths: set[str] = set()
+
+    def set_worktrees(self, paths) -> None:
+        """Router calls this each scan with every known worktree path (for owner_busy ownership)."""
+        self.known_paths = {os.path.realpath(p) for p in paths}
 
     # ---- paths / records ----
     def lock_path(self, wt: Worktree) -> Path:
@@ -106,15 +108,26 @@ class HeadlessTransport:
     def _session(self, wt: Worktree) -> str | None:
         return self.store.kv_get(f"session:{wt.path}")
 
-    def _alive(self, pid: int) -> bool:
-        d = self.proc_root / str(pid)
-        if not d.is_dir():
-            return False
+    def _stat_fields(self, pid) -> list[str] | None:
         try:
-            stat = (d / "stat").read_text()
-            return stat[stat.rindex(")") + 2:].split()[0] != "Z"
-        except (OSError, ValueError, IndexError):
-            return True
+            stat = (self.proc_root / str(pid) / "stat").read_text()
+            return stat[stat.rindex(")") + 2:].split()
+        except (OSError, ValueError):
+            return None
+
+    def _starttime(self, pid) -> str | None:
+        f = self._stat_fields(pid)
+        return f[19] if f and len(f) > 19 else None
+
+    def _alive(self, run: dict) -> bool:
+        """Same pid, same start time (no pid reuse), not a zombie."""
+        pid = run["pid"]
+        if not (self.proc_root / str(pid)).is_dir():
+            return False
+        f = self._stat_fields(pid)
+        if f and f[0] == "Z":
+            return False
+        return self._starttime(pid) == run.get("starttime")
 
     def _pgid_of(self, pid: str) -> int | None:
         try:
@@ -125,16 +138,18 @@ class HeadlessTransport:
 
     # ---- spawning ----
     def _launch(self, wt: Worktree, prompt: str, batch_id: int, session: str, new: bool) -> None:
+        # The flock only guards this check-and-spawn critical section; it is never inherited
+        # by the child. "Busy" afterwards means the recorded run process is alive.
         lock = self.lock_path(wt)
         lock.parent.mkdir(parents=True, exist_ok=True)
-        fd = os.open(lock, os.O_CREAT | os.O_RDWR, 0o600)
+        fd = os.open(lock, os.O_CREAT | os.O_RDWR | os.O_CLOEXEC, 0o600)
         try:
             try:
                 fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except BlockingIOError:
                 raise WorkerBusy(wt.path) from None
             prev = self._run(wt)
-            if prev and self._alive(prev["pid"]):
+            if prev and self._alive(prev):
                 raise WorkerBusy(wt.path)
             w = self.cfg.worker
             argv = [w["claude_bin"], "-p", prompt,
@@ -144,17 +159,21 @@ class HeadlessTransport:
                     "--allowedTools", *w["allowed_tools"],
                     "--disallowedTools", *w["disallowed_tools"]]
             n = int(self.store.kv_get(f"attempt:{batch_id}") or 0) + 1
-            self.store.kv_set(f"attempt:{batch_id}", str(n))
             runs = self.cfg.data_dir / "runs"
             runs.mkdir(parents=True, exist_ok=True)
             out, err = runs / f"{batch_id}-{n}.json", runs / f"{batch_id}-{n}.err"
-            pid = self.spawn(argv, wt.path, out, err, (fd,))
+            try:
+                pid = self.spawn(argv, wt.path, out, err)
+            except OSError as e:
+                raise TransportError(f"spawn failed in {wt.path}: {e}") from e
+            self.store.kv_set(f"attempt:{batch_id}", str(n))
             self.store.kv_set(f"session:{wt.path}", session)
             self.store.kv_set(f"run:{wt.path}", json.dumps({
-                "pid": pid, "pgid": pid, "batch": batch_id, "session": session,
-                "started_at": _now().isoformat(), "out": str(out), "err": str(err), "prompt": prompt}))
+                "pid": pid, "pgid": pid, "starttime": self._starttime(pid), "batch": batch_id,
+                "session": session, "started_at": _now().isoformat(),
+                "out": str(out), "err": str(err), "prompt": prompt}))
         finally:
-            os.close(fd)  # the child keeps its inherited copy, so the flock lives as long as it does
+            os.close(fd)
 
     def start_worker(self, wt: Worktree, prompt: str, batch_id: int) -> str:
         session = str(uuid.uuid4())
@@ -171,7 +190,7 @@ class HeadlessTransport:
         run = self._run(wt)
         # Only the process group this router created; never our own group.
         if run and run.get("session") == session and run["pgid"] > 1 and run["pgid"] != os.getpgrp() \
-                and self._alive(run["pid"]):
+                and self._alive(run):  # re-verified right before signalling
             try:
                 self.killpg(run["pgid"], signal.SIGTERM)
             except ProcessLookupError:
@@ -186,16 +205,28 @@ class HeadlessTransport:
         except OSError:
             return ""
 
-    def _tail(self, wt: Worktree, session: str) -> str:
+    def _tail(self, wt: Worktree, session: str, since: datetime | None) -> str:
         try:
             lines = self.transcript_path(wt, session).read_text(errors="replace").splitlines()
         except OSError:
             return ""
+        if since is not None:  # only lines from the current run; undated lines are ignored
+            lines = [ln for ln in lines if (t := self._line_time(ln)) is not None and t >= since]
         return "\n".join(lines[-TRANSCRIPT_TAIL_LINES:])
+
+    @staticmethod
+    def _line_time(line: str) -> datetime | None:
+        try:
+            t = datetime.fromisoformat(json.loads(line).get("timestamp").replace("Z", "+00:00"))
+            return t if t.tzinfo else t.replace(tzinfo=timezone.utc)
+        except (ValueError, AttributeError, TypeError):
+            return None
 
     def read_text(self, wt: Worktree, session: str) -> str:
         run = self._run(wt)
-        parts = [self._read(run and run.get("out")), self._read(run and run.get("err")), self._tail(wt, session)]
+        since = datetime.fromisoformat(run["started_at"]) if run else None
+        parts = [self._read(run and run.get("out")), self._read(run and run.get("err")),
+                 self._tail(wt, session, since)]
         return "\n".join(p for p in parts if p)
 
     def _turn(self, wt: Worktree) -> tuple[bool, list[str], str]:
@@ -205,13 +236,17 @@ class HeadlessTransport:
     def forbidden_ops(self, wt: Worktree) -> list[str]:
         """Disallowed tools the last finished turn tried to use (health alerts on them)."""
         run = self._run(wt)
-        if not run or self._alive(run["pid"]):
+        if not run or self._alive(run):
             return []
         return self._turn(wt)[1]
 
     def _owner_busy(self, wt: Worktree, run: dict | None) -> bool:
-        """Read-only /proc scan for a foreign `claude` process with cwd inside the worktree."""
-        roots = {wt.path.rstrip("/"), os.path.realpath(wt.path).rstrip("/")}
+        """Read-only /proc scan for a foreign `claude` process owned by this worktree.
+
+        A process belongs to the deepest known worktree whose path is a prefix of its cwd.
+        """
+        me = os.path.realpath(wt.path).rstrip("/")
+        roots = {*self.known_paths, me}
         own_pids = {os.getpid()}
         own_pgids = {os.getpgrp()}
         if run:
@@ -227,16 +262,18 @@ class HeadlessTransport:
                 argv = (e / "cmdline").read_bytes().decode(errors="replace").split("\0")
                 if os.path.basename(argv[0]) not in names or "--input-format" in argv and "stream-json" in argv:
                     continue
-                cwd = os.readlink(e / "cwd")
+                cwd = os.path.realpath(os.readlink(e / "cwd"))
             except OSError:
                 continue
             if int(e.name) in own_pids or self._pgid_of(e.name) in own_pgids:
                 continue
-            if any(cwd == r or cwd.startswith(r + "/") for r in roots):
+            owners = [r for r in roots if cwd == r or cwd.startswith(r.rstrip("/") + "/")]
+            if owners and max(owners, key=len) == me:
                 return True
         return False
 
-    def status(self, wt: Worktree) -> WorkerStatus:
+    def status(self, wt: Worktree, now: datetime | None = None) -> WorkerStatus:
+        now = now or _now()
         session = self._session(wt)
         if not session or self.store.kv_get(f"session-closed:{wt.path}"):
             return WorkerStatus("none", None, None)
@@ -245,7 +282,7 @@ class HeadlessTransport:
             mtime = datetime.fromtimestamp(self.transcript_path(wt, session).stat().st_mtime, timezone.utc)
         except OSError:
             mtime = None
-        if run and self._alive(run["pid"]):
+        if run and self._alive(run):
             started = datetime.fromisoformat(run["started_at"])
             return WorkerStatus("working", session, max(mtime, started) if mtime else started)
         if self._owner_busy(wt, run):
@@ -253,8 +290,14 @@ class HeadlessTransport:
         if not run:
             return WorkerStatus("idle", session, mtime)
         ok, _, text = self._turn(wt)
-        if not ok and parse_limit(self.read_text(wt, session), _now()) is not None:
-            return WorkerStatus("limited", session, mtime, text)
+        if not ok:
+            armed = self.store.kv_get(f"limit-run:{wt.path}")
+            armed = json.loads(armed) if armed else None
+            if armed and armed["run"] == run["started_at"]:
+                if now < datetime.fromisoformat(armed["until"]):
+                    return WorkerStatus("limited", session, mtime, text)
+            elif parse_limit(self.read_text(wt, session), now) is not None:
+                return WorkerStatus("limited", session, mtime, text)
         try:
             bstatus = self.store.batch(run["batch"])["status"]
         except KeyError:
