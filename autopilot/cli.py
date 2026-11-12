@@ -62,7 +62,7 @@ def _ctx(args) -> tuple[Config, Store]:
         cfg = load_config(name, cd)
     except (FileNotFoundError, ValueError) as e:
         raise _Fail(f"Không đọc được cấu hình dự án '{name}': {e}") from e
-    return cfg, Store(cfg.db_path)
+    return cfg, Store(cfg.db_path, prefix=cfg.name)
 
 
 # ---- owner commands -------------------------------------------------------------

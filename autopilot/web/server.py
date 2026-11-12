@@ -94,7 +94,7 @@ class Ctx:
             raise ApiError(404, f"Không tìm thấy dự án '{name}'.") from None
         except ValueError as e:
             raise ApiError(409, f"Cấu hình dự án '{name}' lỗi: {e}") from None
-        return cfg, Store(cfg.db_path)
+        return cfg, Store(cfg.db_path, prefix=cfg.name)
 
 
 # ---- GET handlers -----------------------------------------------------------------

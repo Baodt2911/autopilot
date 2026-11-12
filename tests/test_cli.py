@@ -153,8 +153,8 @@ def test_worker_protocol_ack_start_item_result(tmp_git_repo, tmp_path, proj, cap
     body = tmp_path / "q.md"
     body.write_text("Chọn A hay B?")
     rc, out = run(capsys, ["item", str(bid), "Q", "--title", "A hay B", "--file", str(body), *opts])
-    assert rc == 0 and "Q-ivt-1" in out
-    assert store.item("Q-ivt-1")["body_md"] == "Chọn A hay B?"
+    assert rc == 0 and "Q-t-1" in out
+    assert store.item("Q-t-1")["body_md"] == "Chọn A hay B?"
     res = tmp_path / "r.md"
     res.write_text("done it")
     rc, out = run(capsys, ["result", str(bid), "--file", str(res), "--status", "waiting_owner", *opts])
@@ -613,3 +613,12 @@ def test_scan_suggest_pilot_requires_dry_run_and_is_read_only(tmp_git_repo, proj
     assert rc == 2 and "--dry-run" in out
     rc, out = run(capsys, ["scan", "--dry-run", "--suggest-pilot", *opts])
     assert rc == 0 and store.snapshots() == {}
+
+
+def test_item_codes_use_the_project_name(tmp_path):
+    from autopilot.store import Store
+    from autopilot import cli
+    import inspect
+    assert "prefix=cfg.name" in inspect.getsource(cli._ctx)
+    s = Store(tmp_path / "s.db", prefix="autopilot-test")
+    assert s.prefix == "autopilot-test"
