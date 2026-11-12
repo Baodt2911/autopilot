@@ -7,6 +7,7 @@ import json
 import os
 import signal
 import subprocess
+import sys
 import uuid
 from collections.abc import Callable
 from datetime import datetime, timezone
@@ -23,11 +24,23 @@ _ACTIVE_STATUSES = frozenset({"delivered", "acked", "in_progress"})
 TRANSCRIPT_TAIL_LINES = 50
 
 
+def worker_env(base: dict[str, str] | None = None) -> dict[str, str]:
+    """Environment for a worker: the router's own bin dir (where `autopilot` lives) leads PATH.
+
+    systemd starts the router with a minimal PATH, so without this the worker's
+    `autopilot ack/reply/push` calls fail with "command not found"."""
+    env = dict(os.environ if base is None else base)
+    bindir = str(Path(sys.executable).parent)
+    parts = [x for x in env.get("PATH", "").split(os.pathsep) if x and x != bindir]
+    env["PATH"] = os.pathsep.join([bindir, *parts])
+    return env
+
+
 def spawn_detached(argv: list[str], cwd: str, out: Path, err: Path) -> int:
     """Start argv detached (own session) in cwd; stdout/stderr to files. Returns pid (== pgid)."""
     with open(out, "wb") as fo, open(err, "wb") as fe:
         p = subprocess.Popen(argv, cwd=cwd, stdin=subprocess.DEVNULL, stdout=fo, stderr=fe,
-                             start_new_session=True)
+                             start_new_session=True, env=worker_env())
     return p.pid
 
 

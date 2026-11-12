@@ -305,3 +305,14 @@ def test_stream_json_observer_without_session_is_not_owner_busy(fx):
     (d / "cmdline").write_bytes(b"/usr/bin/claude\0--input-format\0stream-json\0")
     os.symlink(fx.wt.path + "/sub", d / "cwd")
     assert fx.t.status(fx.wt).state == "none"
+
+
+def test_worker_env_puts_router_bin_dir_first_on_path():
+    import sys
+    from pathlib import Path
+    from autopilot.transport.headless import worker_env
+    bindir = str(Path(sys.executable).parent)
+    env = worker_env({"PATH": f"/usr/bin:{bindir}", "HOME": "/h"})
+    assert env["PATH"] == f"{bindir}:/usr/bin"
+    assert env["HOME"] == "/h"
+    assert (Path(bindir) / "python").exists()
